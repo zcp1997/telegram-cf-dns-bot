@@ -1,9 +1,9 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Image with Docker Compose
 
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build-and-push:
@@ -16,9 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -26,11 +23,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build with Docker Compose
-        run: docker compose build
+      - name: Extract image name from docker-compose.yml
+        id: extract-image
+        run: |
+          SERVICE_NAME=$(grep -A 10 'services:' docker-compose.yml | grep -v 'services:' | head -n 1 | tr -d ' :')
+          IMAGE_NAME=$(grep 'image:' docker-compose.yml | head -n 1 | awk '{print $2}')
+          if [ -z "$IMAGE_NAME" ]; then
+            # 如果没有直接指定image字段，则使用服务名称作为默认镜像名
+            IMAGE_NAME="${{ github.repository_owner }}/$(echo $SERVICE_NAME | tr '[:upper:]' '[:lower:]')"
+          fi
+          echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
-      - name: Tag Docker image
-        run: docker tag telegram-cf-dns-bot:latest ghcr.io/zcp1997/telegram-cf-dns-bot:latest
-
-      - name: Push to GitHub Container Registry
-        run: docker push ghcr.io/zcp1997/telegram-cf-dns-bot:latest
+      - name: Build and push with Docker Compose
+        run: |
+          # 构建镜像
+          docker compose build
+          
+          # 获取构建的镜像ID
+          IMAGE_ID=$(docker images --format "{{.ID}}" | head -n 1)
+          
+          # 标记并推送镜像
+          docker tag $IMAGE_ID ghcr.io/zcp1997/telegram-cf-dns-bot:latest
+          docker push ghcr.io/zcp1997/telegram-cf-dns-bot:latest
