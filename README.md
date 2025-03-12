@@ -21,52 +21,52 @@
 
 ### 部署步骤
 
-1. 克隆项目：
-```bash
-git clone https://github.com/yourusername/cloudflare-dns-manager.git
-cd cloudflare-dns-manager
+1. 创建 `docker-compose.yml` 文件：
+
+```yaml
+services:
+  tg-cf-dns-bot:
+    image: ghcr.io/zcp1997/telegram-cf-dns-bot:latest
+    container_name: tg-cf-dns-bot
+    restart: unless-stopped
+    environment:
+      # Telegram Bot Token
+      - TELEGRAM_TOKEN=your_telegram_token_here
+      # Cloudflare API Token
+      - CF_API_TOKEN=your_api_token_here
+      # 允许访问的 Telegram 用户 ID（逗号分隔），第一个用户是管理员
+      - ALLOWED_CHAT_IDS=123456789,987654321
+      # 域名到 Zone ID 的映射（JSON 格式）
+      - 'DOMAIN_ZONE_MAP=
+        {
+          "example.com": "zone_id_1",
+          "example.org": "zone_id_2",
+          "another-domain.com": "zone_id_3"
+        }'
 ```
 
-2. 创建环境配置文件：
+2. 编辑 `docker-compose.yml` 文件，填入必要的配置信息：
+   - 替换 `your_telegram_token_here` 为您的 Telegram Bot Token
+   - 替换 `your_api_token_here` 为您的 Cloudflare API Token
+   - 替换 `ALLOWED_CHAT_IDS` 中的用户ID为您允许访问的用户ID
+   - 在 `DOMAIN_ZONE_MAP` 中配置您的域名和对应的 Zone ID
+
+3. 启动服务：
 ```bash
-cp .env.example .env
+docker compose up -d
 ```
 
-3. 编辑 `.env` 文件，填入必要的配置信息：
-```env
-# Telegram Bot Token
-TELEGRAM_TOKEN=your_telegram_token_here
-
-# Cloudflare API Token
-CF_API_TOKEN=your_api_token_here
-
-# 域名到 Zone ID 的映射（JSON 格式）
-DOMAIN_ZONE_MAP={"example.com":"zone_id_1","example.org":"zone_id_2"}
-
-# 允许访问的 Telegram 用户 ID（逗号分隔）
-ALLOWED_CHAT_IDS=123456789,987654321
-```
-
-4. 启动服务：
+4. 查看日志：
 ```bash
-docker-compose up -d
-```
-
-5. 查看日志：
-```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ### 更新部署
 
-1. 拉取最新代码：
+直接拉取最新镜像并重启容器：
 ```bash
-git pull
-```
-
-2. 重新构建并启动容器：
-```bash
-docker-compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 ## Bot 命令使用说明
@@ -114,7 +114,7 @@ docker-compose up -d --build
 
 1. 如果 Bot 无响应：
    - 检查 `TELEGRAM_TOKEN` 是否正确
-   - 查看容器日志 `docker-compose logs -f`
+   - 查看容器日志 `docker compose logs -f`
 
 2. 如果无法管理 DNS：
    - 确认 `CF_API_TOKEN` 权限是否正确
@@ -129,30 +129,29 @@ docker-compose up -d --build
 ### 日志查看
 ```bash
 # 查看实时日志
-docker-compose logs -f
+docker compose logs -f
 
 # 查看最近 100 行日志
-docker-compose logs --tail=100
+docker compose logs --tail=100
 ```
 
 ### 容器管理
 ```bash
 # 停止服务
-docker-compose down
+docker compose down
 
 # 重启服务
-docker-compose restart
+docker compose restart
 
 # 查看服务状态
-docker-compose ps
+docker compose ps
 ```
 
 ## 安全建议
 
 1. 定期更换 Cloudflare API Token
 2. 严格控制白名单用户访问
-3. 不要将 `.env` 文件提交到代码仓库
-4. 定期检查 Bot 的访问日志
+3. 定期检查 Bot 的访问日志
 
 ## 许可证
 
