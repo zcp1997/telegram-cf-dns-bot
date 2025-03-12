@@ -176,9 +176,10 @@ async function handleQueryDomainInput(ctx, session, getAllRecords = false) {
       session.pageSize = 5; // 每页显示5条记录
       session.totalPages = Math.ceil(records.length / session.pageSize);
       session.state = SessionState.VIEWING_DNS_RECORDS;
+      session.getAllRecords = getAllRecords;
       
       // 显示第一页记录
-      await displayDnsRecordsPage(ctx, session, domainName, getAllRecords);
+      await displayDnsRecordsPage(ctx, session, domainName);
     } else {
       await ctx.reply(`未找到 ${domainName} 的DNS记录`);
       userSessions.delete(ctx.chat.id);
@@ -190,7 +191,7 @@ async function handleQueryDomainInput(ctx, session, getAllRecords = false) {
 }
 
 // 显示DNS记录分页
-async function displayDnsRecordsPage(ctx, session, domainName, getAllRecords = false) {
+async function displayDnsRecordsPage(ctx, session, domainName) {
   // 确保域名被保存到会话中
   if (domainName) {
     session.domain = domainName;
@@ -216,7 +217,7 @@ async function displayDnsRecordsPage(ctx, session, domainName, getAllRecords = f
   }).join('\n\n');
   
   // 如果是查询所有记录，则显示分页导航
-  if (getAllRecords) {
+  if (session.getAllRecords) {
     // 构建分页导航按钮
     const navigationButtons = [];
     
