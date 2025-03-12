@@ -26,13 +26,19 @@ async function getDnsRecord(domainName, getAllRecords = false) {
       });
   
       if (response.data.success && response.data.result.length > 0) {
+        // 确保每条记录都包含 zone_id 字段
+        const records = response.data.result.map(record => ({
+          ...record,
+          zone_id: zoneId // 添加 zone_id 字段
+        }));
+        
         return {
-          records: response.data.result,
+          records: records,
           zoneId: zoneId
         };
       }
       return {
-        record: null,
+        records: [],
         zoneId: zoneId
       };
     } catch (error) {
@@ -178,9 +184,78 @@ async function getDnsRecord(domainName, getAllRecords = false) {
     }
   }
   
+  // 删除单条DNS记录
+  async function deleteSingleDnsRecord(zoneId, recordId) {
+    try {
+      const response = await axios.delete(`${CF_API_BASE}/${zoneId}/dns_records/${recordId}`, {
+        headers: {
+          'Authorization': `Bearer ${CF_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        return {
+          success: true,
+          message: 'DNS记录已成功删除'
+        };
+      } else {
+        throw new Error(response.data.errors[0].message || '删除DNS记录失败');
+      }
+    } catch (error) {
+      console.error('删除DNS记录失败:', error.message);
+      throw error;
+    }
+  }
+  
+  // 更新DNS记录
+  async function updateDnsRecord(zoneId, recordId, name, content, type, proxied) {
+    try {
+      console.log(`正在更新DNS记录: zoneId=${zoneId}, recordId=${recordId}, name=${name}, content=${content}, type=${type}, proxied=${proxied}`);
+      
+      // 确保 zoneId 和 recordId 都存在
+      if (!zoneId || !recordId) {
+        throw new Error('缺少 Zone ID 或记录 ID');
+      }
+      
+      const url = `${CF_API_BASE}/${zoneId}/dns_records/${recordId}`;
+      console.log(`API 请求 URL: ${url}`);
+      
+      const response = await axios.put(url, {
+        type: type,
+        name: name,
+        content: content,
+        proxied: proxied,
+        ttl: 1 // 自动 TTL
+      }, {
+        headers: {
+          'Authorization': `Bearer ${CF_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        return {
+          success: true,
+          message: 'DNS记录已成功更新',
+          record: response.data.result
+        };
+      } else {
+        throw new Error(response.data.errors[0].message || '更新DNS记录失败');
+      }
+    } catch (error) {
+      console.error('更新DNS记录失败:', error.response ? error.response.status : error.message);
+      if (error.response && error.response.data) {
+        console.error('错误详情:', JSON.stringify(error.response.data));
+      }
+      throw error;
+    }
+  }
 
 module.exports = {
   getDnsRecord,
   createOrUpdateDns,
-  deleteDnsRecord
+  deleteDnsRecord,
+  deleteSingleDnsRecord,
+  updateDnsRecord
 };

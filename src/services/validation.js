@@ -1,4 +1,5 @@
 const axios = require('axios');
+const net = require('net');
 const { CF_API_TOKEN, CF_API_BASE, DOMAIN_ZONE_MAP } = require('../config');
 
 const zoneTodomainMap = {};
@@ -148,34 +149,30 @@ async function validateDomainConfig(domain) {
  * 验证 IP 地址格式
  */
 function validateIpAddress(ip) {
-  // IPv4 验证
-  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-  if (ipv4Regex.test(ip)) {
-    const parts = ip.split('.');
-    return parts.every(part => {
-      const num = parseInt(part, 10);
-      return num >= 0 && num <= 255;
-    }) ? {
-      success: true,
-      type: 'A'
-    } : {
+  if (!ip) {
+    return {
       success: false,
-      message: 'IPv4 地址格式无效'
+      message: 'IP地址不能为空'
     };
   }
 
-  // IPv6 验证
-  const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-  if (ipv6Regex.test(ip)) {
+  // 使用 Node.js 的 net 模块验证 IP 地址
+  if (net.isIP(ip) === 4) {
+    return {
+      success: true,
+      type: 'A'
+    };
+  } else if (net.isIP(ip) === 6) {
     return {
       success: true,
       type: 'AAAA'
     };
   }
 
+  // 如果既不是有效的IPv4也不是有效的IPv6
   return {
     success: false,
-    message: 'IP 地址格式无效，请输入有效的 IPv4 或 IPv6 地址'
+    message: '请输入有效的IP地址（IPv4或IPv6）'
   };
 }
 

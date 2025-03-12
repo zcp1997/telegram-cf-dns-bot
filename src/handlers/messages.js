@@ -31,11 +31,11 @@ function setupMessageHandlers(bot) {
         break;
       
       case SessionState.WAITING_DOMAIN_TO_QUERY:
-        await handleQueryDomainInput(ctx, session, false);
+        await handleQueryDomainInput(ctx, session);
         break;
 
-      case SessionState.WAITING_DOMAIN_TO_QUERY_ALL:
-        await handleQueryDomainInput(ctx, session, true);
+      case SessionState.WAITING_DNS_UPDATE_NEW_IP:
+        await handleDnsUpdateIpInput(ctx, session);
         break;
     }
   });
@@ -202,62 +202,119 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
   const endIdx = Math.min(startIdx + session.pageSize, session.dnsRecords.length);
   const pageRecords = session.dnsRecords.slice(startIdx, endIdx);
   
-  const recordsText = pageRecords.map(record => {
-    // 根据记录类型显示更友好的描述
-    let typeDisplay = record.type;
-    if (record.type === 'A') {
-      typeDisplay = 'IPv4 (A)';
-    } else if (record.type === 'AAAA') {
-      typeDisplay = 'IPv6 (AAAA)';
-    }
-    
-    return `域名: ${record.name}\n` +
-           `IP地址: ${record.content}\n` +
-           `类型: ${typeDisplay}\n` +
-           `代理状态: ${record.proxied ? '已启用' : '未启用'}`;
-  }).join('\n\n');
-  
-  // 如果是查询所有记录，则显示分页导航
-  if (session.getAllRecords) {
-    // 构建分页导航按钮
-    const navigationButtons = [];
-    
-    // 上一页按钮
-    if (session.currentPage > 0) {
-      navigationButtons.push({ text: '⬅️ 上一页', callback_data: 'dns_prev_page' });
-    }
-    
-    // 页码信息
-    navigationButtons.push({ 
-      text: `${session.currentPage + 1}/${session.totalPages}`, 
-      callback_data: 'dns_page_info' 
+  // 创建记录按钮
+    // 创建记录按钮
+    const recordButtons = pageRecords.map((record, index) => {
+      // 根据记录类型显示更友好的描述
+      let typeDisplay = record.type;
+      if (record.type === 'A') {
+        typeDisplay = 'IPv4';
+      } else if (record.type === 'AAAA') {
+        typeDisplay = 'IPv6';
+      }
+      
+      // 创建按钮文本
+      const buttonText = `${record.name} [${typeDisplay}] ${record.proxied ? '🟢' : '🔴'}`;
+      
+      // 使用索引而不是完整的ID和名称，将记录索引保存在会话中
+      session.pageRecordIndices = session.pageRecordIndices || {};
+      const recordKey = `r${index}`;
+      session.pageRecordIndices[recordKey] = startIdx + index;
+      
+      // 创建回调数据，只包含索引标识符
+      const callbackData = `dns_r_${recordKey}`;
+      
+      return [{ text: buttonText, callback_data: callbackData }];
     });
     
-    // 下一页按钮
-    if (session.currentPage < session.totalPages - 1) {
-      navigationButtons.push({ text: '下一页 ➡️', callback_data: 'dns_next_page' });
-    }
-    
-    // 完成按钮
-    const actionButtons = [{ text: '完成查询', callback_data: 'dns_done' }];
-    
-    await ctx.reply(
-      `${session.domain} 的DNS记录 (${startIdx + 1}-${endIdx}/${session.dnsRecords.length}):\n\n${recordsText}`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            navigationButtons,
-            actionButtons
-          ]
-        }
-      }
-    );
-  } else {
-    // 如果不是查询所有记录，则不显示分页导航
-    await ctx.reply(`${session.domain} 的DNS记录:\n\n${recordsText}`);
-    // 查询完成后直接删除会话
-    userSessions.delete(ctx.chat.id);
+  
+  // 构建分页导航按钮
+  const navigationButtons = [];
+  
+  // 上一页按钮
+  if (session.currentPage > 0) {
+    navigationButtons.push({ text: '⬅️ 上一页', callback_data: 'dns_prev_page' });
   }
+  
+  // 页码信息
+  navigationButtons.push({ 
+    text: `${session.currentPage + 1}/${session.totalPages}`, 
+    callback_data: 'dns_page_info' 
+  });
+  
+  // 下一页按钮
+  if (session.currentPage < session.totalPages - 1) {
+    navigationButtons.push({ text: '下一页 ➡️', callback_data: 'dns_next_page' });
+  }
+  
+  // 完成按钮
+  const actionButtons = [{ text: '完成查询', callback_data: 'dns_done' }];
+  
+  // 合并所有按钮
+  const inlineKeyboard = [...recordButtons, navigationButtons, actionButtons];
+  
+  await ctx.reply(
+    `${session.domain} 的DNS记录 (${startIdx + 1}-${endIdx}/${session.dnsRecords.length}):\n` +
+    `点击记录可以更新或删除。🟢=已代理 🔴=未代理`,
+    {
+      reply_markup: {
+        inline_keyboard: inlineKeyboard
+      }
+    }
+  );
+}
+
+// 处理新IP地址输入
+async function handleDnsUpdateIpInput(ctx, session) {
+  const ipAddress = ctx.message.text.trim();
+
+  const validationResult = validateIpAddress(ipAddress);
+  if (!validationResult.success) {
+    await ctx.reply(validationResult.message);
+    return;
+  }
+
+  const recordType = validationResult.type;
+  const record = session.selectedRecord;
+  
+  // 检查IP类型是否与记录类型匹配
+  if (record.type !== recordType) {
+    await ctx.reply(
+      `输入的IP类型 (${recordType}) 与记录类型 (${record.type}) 不匹配。\n` +
+      `请输入正确类型的IP地址。`
+    );
+    return;
+  }
+  
+  // 确保记录包含必要的字段
+  if (!record.zone_id || !record.id) {
+    console.log('记录信息:', JSON.stringify(record));
+    await ctx.reply('记录信息不完整，无法更新。请联系管理员。');
+    userSessions.delete(ctx.chat.id);
+    return;
+  }
+  
+  session.newIpAddress = ipAddress;
+  session.state = SessionState.WAITING_NEW_PROXY;
+  
+  await ctx.reply(
+    `是否为 ${record.name} 启用 Cloudflare 代理？\n\n` +
+    `当前状态: ${record.proxied ? '已启用' : '未启用'}\n\n` +
+    `注意：某些服务（如 SSH、FTP 等）可能需要关闭代理才能正常使用。`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '❌ 不启用代理', callback_data: 'new_proxy_no' },
+            { text: '✅ 启用代理', callback_data: 'new_proxy_yes' }
+          ],
+          [
+            { text: '取消操作', callback_data: 'cancel_update_dns' }
+          ]
+        ]
+      }
+    }
+  );
 }
 
 module.exports = { setupMessageHandlers, displayDnsRecordsPage };

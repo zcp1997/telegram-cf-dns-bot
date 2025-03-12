@@ -91,21 +91,24 @@ function setupCommands(bot) {
   bot.command('getdnsall', async (ctx) => {
     const chatId = ctx.chat.id;
     userSessions.set(chatId, {
-      state: SessionState.WAITING_DOMAIN_TO_QUERY_ALL,
+      state: SessionState.SELECTING_DOMAIN_FOR_ALL_DNS,
       lastUpdate: Date.now()
     });
 
     const domains = getConfiguredDomains();
-    let message = '请输入要查询的域名。\n\n可查询的域名列表：\n';
-    domains.forEach(domain => {
-      message += `- ${domain} 及其子域名\n`;
+    let message = '请选择要查询的域名：';
+    
+    // 创建域名选择按钮
+    const domainButtons = domains.map(domain => {
+      return [{ text: domain, callback_data: `select_domain_all_${domain}` }];
     });
+    
+    // 添加取消按钮
+    domainButtons.push([{ text: '取消操作', callback_data: 'cancel_getalldns' }]);
 
     await ctx.reply(message, {
       reply_markup: {
-        inline_keyboard: [[
-          { text: '取消操作', callback_data: 'cancel_getalldns' }
-        ]]
+        inline_keyboard: domainButtons
       }
     });
   });

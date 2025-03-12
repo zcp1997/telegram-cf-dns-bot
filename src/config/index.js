@@ -28,7 +28,7 @@ const CHECK_INTERVAL = 60 * 60 * 1000;  // 60分钟
 // 清理会话间隔时间
 const CLEAN_SESSION_INTERVAL = 5 * 60 * 1000
 
-// 清理会话间隔时间
+// DNS分页大小
 const DNS_RECORDS_PAGE_SIZE = 5
 
 module.exports = {
