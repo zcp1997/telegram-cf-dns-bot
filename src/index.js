@@ -1,6 +1,6 @@
 const { Telegraf } = require('telegraf');
 const { TELEGRAM_TOKEN, ALLOWED_CHAT_IDS } = require('./config');
-const { setupCommands, commands, adminCommands } = require('./handlers/commands');
+const { setupCommands, commands } = require('./handlers/commands');
 const { setupCallbacks } = require('./handlers/callbacks');
 const { setupMessageHandlers } = require('./handlers/messages');
 const { checkAccessWithCache } = require('./middleware/auth');
