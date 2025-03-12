@@ -1,5 +1,5 @@
 const { userSessions, SessionState } = require('../utils/session');
-const { createOrUpdateDns, deleteDnsRecord, getDnsRecord, updateDnsRecord } = require('../services/cloudflare');
+const { createOrUpdateDns, deleteDnsRecord, getDnsRecord, updateDnsRecord, deleteSingleDnsRecord } = require('../services/cloudflare');
 const { displayDnsRecordsPage } = require('./messages');
 const { getZoneIdForDomain } = require('../utils/domain');
 const { DNS_RECORDS_PAGE_SIZE } = require('../config');
