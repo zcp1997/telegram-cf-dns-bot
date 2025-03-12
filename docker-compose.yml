@@ -18,5 +18,3 @@ services:
           "example.org": "zone_id_2",
           "another-domain.com": "zone_id_3"
         }'
-    volumes:
-      - ./src:/app/src
