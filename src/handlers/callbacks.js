@@ -144,6 +144,8 @@ function setupCallbacks(bot) {
   });
 
   bot.action('dns_page_info', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
     await ctx.answerCbQuery(`第 ${session.currentPage + 1} 页，共 ${session.totalPages} 页`);
   });
 
