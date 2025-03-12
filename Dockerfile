@@ -1,3 +1,5 @@
+LABEL org.opencontainers.image.source="https://github.com/zcp1997/telegram-cf-dns-bot"
+
 FROM node:18-alpine
 
 WORKDIR /app

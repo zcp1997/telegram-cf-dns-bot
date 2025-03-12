@@ -3,21 +3,26 @@ const { CF_API_TOKEN, CF_API_BASE } = require('../config');
 const { getZoneIdForDomain } = require('../utils/domain');
 
 // Cloudflare API 函数
-async function getDnsRecord(domainName) {
+async function getDnsRecord(domainName, getAllRecords = false) {
     const zoneId = getZoneIdForDomain(domainName);
     if (!zoneId) {
       throw new Error(`找不到域名 ${domainName} 对应的Zone ID，请检查配置`);
     }
     
     try {
+      // 创建请求参数对象
+      const params = {};
+      // 只有在不查询所有记录时才添加name过滤条件
+      if (!getAllRecords) {
+        params.name = domainName;
+      }
+
       const response = await axios.get(`${CF_API_BASE}/${zoneId}/dns_records`, {
         headers: {
           'Authorization': `Bearer ${CF_API_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        params: {
-          name: domainName
-        }
+        params: params
       });
   
       if (response.data.success && response.data.result.length > 0) {

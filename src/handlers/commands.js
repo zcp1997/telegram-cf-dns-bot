@@ -11,6 +11,8 @@ const helpMessage = '🤖 欢迎使用多域名 Cloudflare DNS 管理机器人�
     '   • 可选择是否启用代理\n\n' +
     '🔍 /getdns - 查询 DNS 记录\n' +
     '   • 查看域名的详细配置\n\n' +
+    '🔍 /getdnsall - 查询所有 DNS 记录\n' +
+    '   • 查看根域名下所有记录\n\n' +
     '❌ /deldns - 删除 DNS 记录\n' +
     '   • 删除前会要求确认\n\n' +
     '📊 系统信息\n' +
@@ -85,6 +87,29 @@ function setupCommands(bot) {
     });
   });
 
+  // 查询所有DNS记录命令
+  bot.command('getdnsall', async (ctx) => {
+    const chatId = ctx.chat.id;
+    userSessions.set(chatId, {
+      state: SessionState.WAITING_DOMAIN_TO_QUERY_ALL,
+      lastUpdate: Date.now()
+    });
+
+    const domains = getConfiguredDomains();
+    let message = '请输入要查询的域名。\n\n可查询的域名列表：\n';
+    domains.forEach(domain => {
+      message += `- ${domain} 及其子域名\n`;
+    });
+
+    await ctx.reply(message, {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '取消操作', callback_data: 'cancel_getalldns' }
+        ]]
+      }
+    });
+  });
+
   // 删除DNS记录命令
   bot.command('deldns', async (ctx) => {
     const chatId = ctx.chat.id;
@@ -147,6 +172,7 @@ const commands = [
     { command: 'start', description: '开始使用机器人' },
     { command: 'setdns', description: '添加/更新DNS记录' },
     { command: 'getdns', description: '查询DNS记录' },
+    { command: 'getdnsall', description: '查询所有DNS记录' },
     { command: 'deldns', description: '删除DNS记录' },
     { command: 'domains', description: '查看所有已配置的域名' },
     { command: 'help', description: '显示帮助信息' },

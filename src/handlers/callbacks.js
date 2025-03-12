@@ -1,5 +1,6 @@
 const { userSessions, SessionState } = require('../utils/session');
 const { createOrUpdateDns, deleteDnsRecord } = require('../services/cloudflare');
+const { displayDnsRecordsPage } = require('./messages');
 
 function setupCallbacks(bot) {
   // 取消操作的回调
@@ -104,6 +105,53 @@ function setupCallbacks(bot) {
     }
     
     userSessions.delete(chatId);
+  });
+
+  bot.action('dns_prev_page', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+    
+    if (!session || session.state !== SessionState.VIEWING_DNS_RECORDS) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+    
+    if (session.currentPage > 0) {
+      session.currentPage--;
+      await ctx.deleteMessage();
+      await displayDnsRecordsPage(ctx, session);
+    }
+    
+    await ctx.answerCbQuery();
+  });
+
+  bot.action('dns_next_page', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+    
+    if (!session || session.state !== SessionState.VIEWING_DNS_RECORDS) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+    
+    if (session.currentPage < session.totalPages - 1) {
+      session.currentPage++;
+      await ctx.deleteMessage();
+      await displayDnsRecordsPage(ctx, session);
+    }
+    
+    await ctx.answerCbQuery();
+  });
+
+  bot.action('dns_page_info', async (ctx) => {
+    await ctx.answerCbQuery(`第 ${session.currentPage + 1} 页，共 ${session.totalPages} 页`);
+  });
+
+  bot.action('dns_done', async (ctx) => {
+    const chatId = ctx.chat.id;
+    userSessions.delete(chatId);
+    await ctx.answerCbQuery('查询完成');
+    await ctx.reply('DNS记录查询已完成');
   });
 }
 
