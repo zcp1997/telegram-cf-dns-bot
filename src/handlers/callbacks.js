@@ -153,7 +153,7 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     userSessions.delete(chatId);
     await ctx.answerCbQuery('查询完成');
-    await ctx.reply('DNS记录查询已完成');
+    await ctx.reply('DNS记录查询已完成。');
   });
 }
 

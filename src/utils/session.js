@@ -1,4 +1,4 @@
-const { SESSION_TIMEOUT } = require('../config');
+const { SESSION_TIMEOUT, CLEAN_SESSION_INTERVAL } = require('../config');
 
 const userSessions = new Map();
 
@@ -24,7 +24,7 @@ function cleanupSessions() {
 }
 
 // 启动定期清理
-setInterval(cleanupSessions, 5 * 60 * 1000);
+setInterval(cleanupSessions, CLEAN_SESSION_INTERVAL);
 
 module.exports = {
   userSessions,

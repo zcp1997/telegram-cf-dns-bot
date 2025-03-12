@@ -2,6 +2,7 @@ const { userSessions, SessionState } = require('../utils/session');
 const { getZoneIdForDomain } = require('../utils/domain');
 const { getDnsRecord } = require('../services/cloudflare');
 const { validateIpAddress } = require('../services/validation');
+const { DNS_RECORDS_PAGE_SIZE } = require('../config');
 
 function setupMessageHandlers(bot) {
   bot.on('text', async (ctx) => {
@@ -173,7 +174,7 @@ async function handleQueryDomainInput(ctx, session, getAllRecords = false) {
       // 保存记录到会话中
       session.dnsRecords = records;
       session.currentPage = 0;
-      session.pageSize = 5; // 每页显示5条记录
+      session.pageSize = DNS_RECORDS_PAGE_SIZE; // 每页显示5条记录
       session.totalPages = Math.ceil(records.length / session.pageSize);
       session.state = SessionState.VIEWING_DNS_RECORDS;
       session.getAllRecords = getAllRecords;
@@ -238,7 +239,7 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
     }
     
     // 完成按钮
-    const actionButtons = [{ text: '完成', callback_data: 'dns_done' }];
+    const actionButtons = [{ text: '完成查询', callback_data: 'dns_done' }];
     
     await ctx.reply(
       `${session.domain} 的DNS记录 (${startIdx + 1}-${endIdx}/${session.dnsRecords.length}):\n\n${recordsText}`,

@@ -25,6 +25,12 @@ const SESSION_TIMEOUT = 30 * 60 * 1000; // 30分钟
 // 轮询检查时间
 const CHECK_INTERVAL = 60 * 60 * 1000;  // 60分钟
 
+// 清理会话间隔时间
+const CLEAN_SESSION_INTERVAL = 5 * 60 * 1000
+
+// 清理会话间隔时间
+const DNS_RECORDS_PAGE_SIZE = 5
+
 module.exports = {
   TELEGRAM_TOKEN,
   CF_API_TOKEN,
@@ -32,5 +38,7 @@ module.exports = {
   DOMAIN_ZONE_MAP,
   ALLOWED_CHAT_IDS,
   SESSION_TIMEOUT,
-  CHECK_INTERVAL
+  CHECK_INTERVAL,
+  CLEAN_SESSION_INTERVAL,
+  DNS_RECORDS_PAGE_SIZE
 };
