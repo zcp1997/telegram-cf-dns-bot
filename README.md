@@ -19,7 +19,9 @@
 - Cloudflare API Token（从 Cloudflare 控制面板获取）
 - 域名的 Zone ID（从 Cloudflare 控制面板获取）
 
-### 部署步骤
+## 部署方式
+
+### 方式一：使用预构建镜像（推荐）
 
 1. 创建 `docker-compose.yml` 文件：
 
@@ -59,6 +61,23 @@ docker compose up -d
 4. 查看日志：
 ```bash
 docker compose logs -f
+```
+
+### 方式二：手动构建与部署
+如果您希望自行构建镜像或对代码进行修改，可以按照以下步骤操作：
+
+1. 克隆代码仓库：
+```bash
+git clone https://github.com/zcp1997/telegram-cf-dns-bot.git
+cd telegram-cf-dns-bot
+```
+
+2. 填写配置信息
+
+3. 使用 Docker Compose 构建并启动：
+```bash
+docker compose build
+docker compose up -d
 ```
 
 ### 更新部署
