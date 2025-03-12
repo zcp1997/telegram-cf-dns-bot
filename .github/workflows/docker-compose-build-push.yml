@@ -26,7 +26,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build with Docker Compose
+      - name: Build with Docker Compose
         run: docker compose build
 
       - name: Tag Docker image
