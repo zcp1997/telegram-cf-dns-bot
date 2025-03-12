@@ -178,7 +178,7 @@ async function handleQueryDomainInput(ctx, session, getAllRecords = false) {
       session.state = SessionState.VIEWING_DNS_RECORDS;
       
       // 显示第一页记录
-      await displayDnsRecordsPage(ctx, session, domainName);
+      await displayDnsRecordsPage(ctx, session, domainName, getAllRecords);
     } else {
       await ctx.reply(`未找到 ${domainName} 的DNS记录`);
       userSessions.delete(ctx.chat.id);
@@ -190,7 +190,7 @@ async function handleQueryDomainInput(ctx, session, getAllRecords = false) {
 }
 
 // 显示DNS记录分页
-async function displayDnsRecordsPage(ctx, session, domainName) {
+async function displayDnsRecordsPage(ctx, session, domainName, getAllRecords = false) {
   // 确保域名被保存到会话中
   if (domainName) {
     session.domain = domainName;
@@ -215,39 +215,47 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
            `代理状态: ${record.proxied ? '已启用' : '未启用'}`;
   }).join('\n\n');
   
-  // 构建分页导航按钮
-  const navigationButtons = [];
-  
-  // 上一页按钮
-  if (session.currentPage > 0) {
-    navigationButtons.push({ text: '⬅️ 上一页', callback_data: 'dns_prev_page' });
-  }
-  
-  // 页码信息
-  navigationButtons.push({ 
-    text: `${session.currentPage + 1}/${session.totalPages}`, 
-    callback_data: 'dns_page_info' 
-  });
-  
-  // 下一页按钮
-  if (session.currentPage < session.totalPages - 1) {
-    navigationButtons.push({ text: '下一页 ➡️', callback_data: 'dns_next_page' });
-  }
-  
-  // 完成按钮
-  const actionButtons = [{ text: '完成', callback_data: 'dns_done' }];
-  
-  await ctx.reply(
-    `${session.domain} 的DNS记录 (${startIdx + 1}-${endIdx}/${session.dnsRecords.length}):\n\n${recordsText}`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          navigationButtons,
-          actionButtons
-        ]
-      }
+  // 如果是查询所有记录，则显示分页导航
+  if (getAllRecords) {
+    // 构建分页导航按钮
+    const navigationButtons = [];
+    
+    // 上一页按钮
+    if (session.currentPage > 0) {
+      navigationButtons.push({ text: '⬅️ 上一页', callback_data: 'dns_prev_page' });
     }
-  );
+    
+    // 页码信息
+    navigationButtons.push({ 
+      text: `${session.currentPage + 1}/${session.totalPages}`, 
+      callback_data: 'dns_page_info' 
+    });
+    
+    // 下一页按钮
+    if (session.currentPage < session.totalPages - 1) {
+      navigationButtons.push({ text: '下一页 ➡️', callback_data: 'dns_next_page' });
+    }
+    
+    // 完成按钮
+    const actionButtons = [{ text: '完成', callback_data: 'dns_done' }];
+    
+    await ctx.reply(
+      `${session.domain} 的DNS记录 (${startIdx + 1}-${endIdx}/${session.dnsRecords.length}):\n\n${recordsText}`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            navigationButtons,
+            actionButtons
+          ]
+        }
+      }
+    );
+  } else {
+    // 如果不是查询所有记录，则不显示分页导航
+    await ctx.reply(`${session.domain} 的DNS记录:\n\n${recordsText}`);
+    // 查询完成后直接删除会话
+    userSessions.delete(ctx.chat.id);
+  }
 }
 
 module.exports = { setupMessageHandlers, displayDnsRecordsPage };
