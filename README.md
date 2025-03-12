@@ -81,6 +81,7 @@ docker compose up -d
 
 - `/setdns` - 添加或更新 DNS 记录
 - `/getdns` - 查询域名的 DNS 记录
+- `/getdnsall` - 查询根域名下所有子域名的 DNS 记录
 - `/deldns` - 删除域名的 DNS 记录
 
 ### 管理员命令
