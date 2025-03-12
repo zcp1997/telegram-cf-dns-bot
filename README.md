@@ -79,14 +79,9 @@ docker compose up -d
 
 ### DNS 记录管理
 
-- `/setdns <域名> <IP地址>` - 添加或更新 DNS 记录
-  - 例如：`/setdns test.example.com 192.168.1.1`
-
-- `/getdns <域名>` - 查询域名的 DNS 记录
-  - 例如：`/getdns test.example.com`
-
-- `/deldns <域名>` - 删除域名的 DNS 记录
-  - 例如：`/deldns test.example.com`
+- `/setdns` - 添加或更新 DNS 记录
+- `/getdns` - 查询域名的 DNS 记录
+- `/deldns` - 删除域名的 DNS 记录
 
 ### 管理员命令
 
