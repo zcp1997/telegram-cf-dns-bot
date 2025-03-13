@@ -4,11 +4,11 @@
 
 ## 功能特点
 
+- 🤖 Telegram Bot 交互界面
 - 🔒 用户白名单控制
 - 🌐 支持多域名管理
 - 📝 DNS 记录的增删改查
 - 🐳 Docker 容器化部署
-- 🤖 Telegram Bot 交互界面
 
 ## 快速开始
 
@@ -173,7 +173,3 @@ docker compose ps
 ## 贡献指南
 
 欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
-
----
-
-如有问题，请提交 Issue 或联系项目维护者。
