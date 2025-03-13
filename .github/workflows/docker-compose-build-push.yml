@@ -62,24 +62,3 @@ jobs:
           # 推送两个标签的镜像
           docker push ghcr.io/zcp1997/telegram-cf-dns-bot:latest
           docker push ghcr.io/zcp1997/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
-
-      - name: Dockerhub Build and push with Docker Compose
-        run: |
-          # 构建镜像
-          docker compose build
-          
-          # 获取构建的镜像ID
-          IMAGE_ID=$(docker images --format "{{.ID}}" | head -n 1)
-          
-          # 标记并推送镜像到 Docker Hub
-          docker tag $IMAGE_ID zcp970603/telegram-cf-dns-bot:latest
-          docker push zcp970603/telegram-cf-dns-bot:latest
-
-      - name: Update Docker Hub Description
-        uses: peter-evans/dockerhub-description@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: zcp970603/telegram-cf-dns-bot
-          readme-filepath: ./README.md
-          

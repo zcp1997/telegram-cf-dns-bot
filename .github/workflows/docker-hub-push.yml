@@ -1,0 +1,49 @@
+name: Build and Push Docker Image to Docker Hub
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract image name from docker-compose.yml
+        id: extract-image
+        run: |
+          SERVICE_NAME=$(grep -A 10 'services:' docker-compose.yml | grep -v 'services:' | head -n 1 | tr -d ' :')
+          IMAGE_NAME=$(grep 'image:' docker-compose.yml | head -n 1 | awk '{print $2}')
+          if [ -z "$IMAGE_NAME" ]; then
+            IMAGE_NAME="zcp970603/$(echo $SERVICE_NAME | tr '[:upper:]' '[:lower:]')"
+          fi
+          echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Build and push with Docker Compose
+        run: |
+          docker compose build
+          IMAGE_ID=$(docker images --format "{{.ID}}" | head -n 1)
+          docker tag $IMAGE_ID zcp970603/telegram-cf-dns-bot:latest
+          docker push zcp970603/telegram-cf-dns-bot:latest
+
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: zcp970603/telegram-cf-dns-bot
+          readme-filepath: ./README.md
