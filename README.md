@@ -1,6 +1,6 @@
 # Cloudflare DNS 管理器
 
-这是一个基于 Telegram Bot 的 Cloudflare DNS 记录管理工具，支持多域名管理，可以方便地添加、更新、删除和查询 DNS 记录。
+这是一个基于 Telegram Bot 的 Cloudflare DNS 交互式记录管理工具，支持多域名管理，可以方便地添加、更新、删除和查询 DNS 记录。
 
 ## 功能特点
 
