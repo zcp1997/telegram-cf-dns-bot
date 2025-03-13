@@ -82,3 +82,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: zcp970603/telegram-cf-dns-bot
           readme-filepath: ./README.md
+          
