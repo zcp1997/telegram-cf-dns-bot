@@ -1,6 +1,6 @@
 {
     "name": "cloudflare-dns-manager",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "Telegram bot for managing Cloudflare DNS records",
     "main": "src/index.js",
     "scripts": {
@@ -12,5 +12,9 @@
       "dotenv": "^16.3.1",
       "net": "^1.0.2"
     },
-    "type": "commonjs"
+    "type": "commonjs",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/zcp1997/telegram-cf-dns-bot.git"
+    }
 }

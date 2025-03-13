@@ -139,8 +139,6 @@ docker compose up -d
    - 确认您的 Telegram 用户 ID 是否在 `ALLOWED_CHAT_IDS` 中
    - 可以通过 [@userinfobot](https://t.me/userinfobot) 获取您的用户 ID
 
-## 维护与支持
-
 ### 日志查看
 ```bash
 # 查看实时日志
