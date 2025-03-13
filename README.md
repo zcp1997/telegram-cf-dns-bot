@@ -173,7 +173,3 @@ docker compose ps
 ## 贡献指南
 
 欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
-
----
-
-如有问题，请提交 Issue 或联系项目维护者。
