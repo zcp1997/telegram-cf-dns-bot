@@ -157,7 +157,7 @@ function setupCommands(bot) {
     const chatId = ctx.chat.id.toString();
     if (ALLOWED_CHAT_IDS[0] === chatId) {
       const mappings = Object.entries(DOMAIN_ZONE_MAP)
-        .map(([domain, zoneId]) => `${domain}: ${zoneId}`)
+        .map(([domain, zoneId]) => `${domain} -> ${zoneId}`)
         .join('\n');
 
       if (mappings) {
