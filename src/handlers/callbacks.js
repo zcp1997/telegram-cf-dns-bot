@@ -238,19 +238,19 @@ function setupCallbacks(bot) {
     }
     
     // 删除所有存储的消息ID对应的消息
-    // if (session && session.getDnsMessageIds && session.getDnsMessageIds.length > 0) {
-    //   for (const msgId of session.getDnsMessageIds) {
-    //     try {
-    //       // 跳过当前消息（已经尝试删除过）
-    //       if (ctx.callbackQuery && msgId === ctx.callbackQuery.message.message_id) {
-    //         continue;
-    //       }
-    //       await ctx.telegram.deleteMessage(chatId, msgId);
-    //     } catch (error) {
-    //       console.log(`删除消息ID ${msgId} 失败:`, error.message);
-    //     }
-    //   }
-    // }
+    if (session && session.getDnsMessageIds && session.getDnsMessageIds.length > 0) {
+      for (const msgId of session.getDnsMessageIds) {
+        try {
+          // 跳过当前消息（已经尝试删除过）
+          if (ctx.callbackQuery && msgId === ctx.callbackQuery.message.message_id) {
+            continue;
+          }
+          await ctx.telegram.deleteMessage(chatId, msgId);
+        } catch (error) {
+          console.log(`删除消息ID ${msgId} 失败:`, error.message);
+        }
+      }
+    }
     
     // 发送完成提示
     await ctx.reply('DNS记录查询已完成。');
