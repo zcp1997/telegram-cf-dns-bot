@@ -49,6 +49,15 @@ services:
         }'
 ```
 
+#### tip
+You can quickly get your DOMAIN_ZONE_MAP by curl
+```bash
+curl -s -X GET "https://api.cloudflare.com/client/v4/zones" \
+     -H "Authorization: Bearer YOUR_API_TOKEN" \
+     -H "Content-Type: application/json" | \
+jq '[.result[] | {key: .name, value: .id}] | from_entries'
+```
+
 2. Edit the `docker-compose.yml` file, filling in the necessary configuration:
    - Replace `your_telegram_token_here` with your Telegram Bot Token
    - Replace `your_api_token_here` with your Cloudflare API Token

@@ -47,6 +47,15 @@ services:
         }'
 ```
 
+#### 小贴士
+你可以通过这个curl命令快速得到托管的 DOMAIN_ZONE_MAP 配置
+```bash
+curl -s -X GET "https://api.cloudflare.com/client/v4/zones" \
+     -H "Authorization: Bearer YOUR_API_TOKEN" \
+     -H "Content-Type: application/json" | \
+jq '[.result[] | {key: .name, value: .id}] | from_entries'
+```
+
 2. 编辑 `docker-compose.yml` 文件，填入必要的配置信息：
    - 替换 `your_telegram_token_here` 为您的 Telegram Bot Token
    - 替换 `your_api_token_here` 为您的 Cloudflare API Token
