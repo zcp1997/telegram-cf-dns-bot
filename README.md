@@ -1,29 +1,31 @@
-# Cloudflare DNS 管理器
+# Cloudflare DNS Manager
 
-这是一个基于 Telegram Bot 的 Cloudflare DNS 交互式记录管理工具，支持多域名管理，可以方便地添加、更新、删除和查询 DNS 记录。
+This is an interactive Cloudflare DNS record management tool based on Telegram Bot, supporting multi-domain management for easy addition, updating, deletion, and querying of DNS records.
 
-## 功能特点
+[中文文档](README_CN.md)
 
-- 🔒 用户白名单控制
-- 🌐 支持多域名管理
-- 📝 DNS 记录的增删改查
-- 🐳 Docker 容器化部署
-- 🤖 Telegram Bot 交互界面
+## Features
 
-## 快速开始
+- 🔒 User whitelist control
+- 🌐 Multi-domain management
+- 📝 DNS record CRUD operations
+- 🐳 Docker containerized deployment
+- 🤖 Telegram Bot interactive interface
 
-### 前置要求
+## Quick Start
 
-- Docker 和 Docker Compose
-- Telegram Bot Token（从 [@BotFather](https://t.me/BotFather) 获取）
-- Cloudflare API Token（从 Cloudflare 控制面板获取）
-- 域名的 Zone ID（从 Cloudflare 控制面板获取）
+### Prerequisites
 
-## 部署方式
+- Docker and Docker Compose
+- Telegram Bot Token (obtain from [@BotFather](https://t.me/BotFather))
+- Cloudflare API Token (obtain from Cloudflare dashboard)
+- Domain Zone IDs (obtain from Cloudflare dashboard)
 
-### 方式一：使用预构建镜像（推荐）
+## Deployment Methods
 
-1. 创建 `docker-compose.yml` 文件：
+### Method 1: Using Pre-built Image (Recommended)
+
+1. Create a `docker-compose.yml` file:
 
 ```yaml
 services:
@@ -36,9 +38,9 @@ services:
       - TELEGRAM_TOKEN=your_telegram_token_here
       # Cloudflare API Token
       - CF_API_TOKEN=your_api_token_here
-      # 允许访问的 Telegram 用户 ID（逗号分隔），第一个用户是管理员
+      # Allowed Telegram user IDs (comma-separated), first user is admin
       - ALLOWED_CHAT_IDS=123456789,987654321
-      # 域名到 Zone ID 的映射（JSON 格式）
+      # Domain to Zone ID mapping (JSON format)
       - 'DOMAIN_ZONE_MAP=
         {
           "example.com": "zone_id_1",
@@ -47,129 +49,129 @@ services:
         }'
 ```
 
-2. 编辑 `docker-compose.yml` 文件，填入必要的配置信息：
-   - 替换 `your_telegram_token_here` 为您的 Telegram Bot Token
-   - 替换 `your_api_token_here` 为您的 Cloudflare API Token
-   - 替换 `ALLOWED_CHAT_IDS` 中的用户ID为您允许访问的用户ID
-   - 在 `DOMAIN_ZONE_MAP` 中配置您的域名和对应的 Zone ID
+2. Edit the `docker-compose.yml` file, filling in the necessary configuration:
+   - Replace `your_telegram_token_here` with your Telegram Bot Token
+   - Replace `your_api_token_here` with your Cloudflare API Token
+   - Replace user IDs in `ALLOWED_CHAT_IDS` with your allowed user IDs
+   - Configure your domains and corresponding Zone IDs in `DOMAIN_ZONE_MAP`
 
-3. 启动服务：
+3. Start the service:
 ```bash
 docker compose up -d
 ```
 
-4. 查看日志：
+4. View logs:
 ```bash
 docker compose logs -f
 ```
 
-### 方式二：手动构建与部署
-如果您希望自行构建镜像或对代码进行修改，可以按照以下步骤操作：
+### Method 2: Manual Build and Deployment
+If you prefer to build the image yourself or modify the code, follow these steps:
 
-1. 克隆代码仓库：
+1. Clone the repository:
 ```bash
 git clone https://github.com/zcp1997/telegram-cf-dns-bot.git
 cd telegram-cf-dns-bot
 ```
 
-2. 填写配置信息
+2. Fill in the configuration information
 
-3. 使用 Docker Compose 构建并启动：
+3. Build and start using Docker Compose:
 ```bash
 docker compose build
 docker compose up -d
 ```
 
-### 更新部署
+### Updating Deployment
 
-直接拉取最新镜像并重启容器：
+Simply pull the latest image and restart the container:
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-## Bot 命令使用说明
+## Bot Command Usage
 
-### 基础命令
+### Basic Commands
 
-- `/start` - 显示欢迎信息和使用说明
-- `/help` - 显示帮助信息
-- `/domains` - 列出所有已配置的域名
+- `/start` - Display welcome message and instructions
+- `/help` - Display help information
+- `/domains` - List all configured domains
 
-### DNS 记录管理
+### DNS Record Management
 
-- `/setdns` - 添加或更新 DNS 记录
-- `/getdns` - 查询域名的 DNS 记录
-- `/getdnsall` - 查询根域名下所有子域名的 DNS 记录
-- `/deldns` - 删除域名的 DNS 记录
+- `/setdns` - Add or update DNS records
+- `/getdns` - Query DNS records for a domain
+- `/getdnsall` - Query all DNS records under a root domain
+- `/deldns` - Delete DNS records for a domain
 
-### 管理员命令
+### Admin Commands
 
-- `/listusers` - 显示当前白名单用户列表（仅管理员可用）
-- `/zonemap` - 显示域名和 Zone ID 的映射关系（仅管理员可用）
+- `/listusers` - Display current whitelist users (admin only)
+- `/zonemap` - Display domain to Zone ID mapping (admin only)
 
-## 配置说明
+## Configuration Details
 
-### Cloudflare API Token 权限要求
+### Cloudflare API Token Permission Requirements
 
-创建 API Token 时需要包含以下权限：
+When creating an API Token, include the following permissions:
 - Zone - DNS - Edit
 - Zone - Zone - Read
 
-### 环境变量说明
+### Environment Variables
 
-| 变量名 | 说明 | 示例 |
-|--------|------|------|
+| Variable | Description | Example |
+|----------|-------------|---------|
 | TELEGRAM_TOKEN | Telegram Bot Token | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
 | CF_API_TOKEN | Cloudflare API Token | `your-api-token-here` |
-| DOMAIN_ZONE_MAP | 域名到 Zone ID 的映射 | `{"example.com":"abc123","example.org":"def456"}` |
-| ALLOWED_CHAT_IDS | 允许访问的用户 ID | `123456789,987654321` |
+| DOMAIN_ZONE_MAP | Domain to Zone ID mapping | `{"example.com":"abc123","example.org":"def456"}` |
+| ALLOWED_CHAT_IDS | Allowed user IDs | `123456789,987654321` |
 
-## 故障排除
+## Troubleshooting
 
-1. 如果 Bot 无响应：
-   - 检查 `TELEGRAM_TOKEN` 是否正确
-   - 查看容器日志 `docker compose logs -f`
+1. If the Bot is unresponsive:
+   - Check if `TELEGRAM_TOKEN` is correct
+   - View container logs with `docker compose logs -f`
 
-2. 如果无法管理 DNS：
-   - 确认 `CF_API_TOKEN` 权限是否正确
-   - 检查 `DOMAIN_ZONE_MAP` 格式是否正确
+2. If unable to manage DNS:
+   - Confirm `CF_API_TOKEN` has correct permissions
+   - Check if `DOMAIN_ZONE_MAP` format is correct
 
-3. 如果无法访问 Bot：
-   - 确认您的 Telegram 用户 ID 是否在 `ALLOWED_CHAT_IDS` 中
-   - 可以通过 [@userinfobot](https://t.me/userinfobot) 获取您的用户 ID
+3. If unable to access the Bot:
+   - Confirm your Telegram user ID is in `ALLOWED_CHAT_IDS`
+   - You can get your user ID via [@userinfobot](https://t.me/userinfobot)
 
-### 日志查看
+### Viewing Logs
 ```bash
-# 查看实时日志
+# View real-time logs
 docker compose logs -f
 
-# 查看最近 100 行日志
+# View last 100 lines of logs
 docker compose logs --tail=100
 ```
 
-### 容器管理
+### Container Management
 ```bash
-# 停止服务
+# Stop service
 docker compose down
 
-# 重启服务
+# Restart service
 docker compose restart
 
-# 查看服务状态
+# Check service status
 docker compose ps
 ```
 
-## 安全建议
+## Security Recommendations
 
-1. 定期更换 Cloudflare API Token
-2. 严格控制白名单用户访问
-3. 定期检查 Bot 的访问日志
+1. Regularly rotate your Cloudflare API Token
+2. Strictly control whitelist user access
+3. Regularly check Bot access logs
 
-## 许可证
+## License
 
 [MIT License](LICENSE)
 
-## 贡献指南
+## Contributing
 
-欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
+Issues and Pull Requests are welcome to help improve this project.
