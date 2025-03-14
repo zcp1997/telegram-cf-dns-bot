@@ -1,6 +1,6 @@
 {
     "name": "cloudflare-dns-manager",
-    "version": "0.1.0",
+    "version": "0.1.8",
     "description": "Telegram bot for managing Cloudflare DNS records",
     "main": "src/index.js",
     "scripts": {
