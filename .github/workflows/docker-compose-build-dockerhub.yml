@@ -1,42 +1,30 @@
-name: Build and Push Docker Image with Docker Compose
-
+name: Build and Push Docker Image to DockerHub
 on:
   push:
     branches:
       - main
     tags:
       - 'v*'
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
+    environment: Dockerhub
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Login to GitHub Container Registry
+        
+      - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          
       - name: Extract image name from docker-compose.yml
         id: extract-image
         run: |
           SERVICE_NAME=$(grep -A 10 'services:' docker-compose.yml | grep -v 'services:' | head -n 1 | tr -d ' :')
-          IMAGE_NAME=$(grep 'image:' docker-compose.yml | head -n 1 | awk '{print $2}')
-          if [ -z "$IMAGE_NAME" ]; then
-            # 如果没有直接指定image字段，则使用服务名称作为默认镜像名
-            IMAGE_NAME="${{ github.repository_owner }}/$(echo $SERVICE_NAME | tr '[:upper:]' '[:lower:]')"
-          fi
           echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
-          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-
+          
       - name: Get version
         id: get-version
         run: |
@@ -48,7 +36,7 @@ jobs:
             VERSION=$(grep '"version"' package.json | cut -d '"' -f 4)
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-
+          
       - name: Build and push with Docker Compose
         run: |
           # 构建镜像
@@ -58,9 +46,9 @@ jobs:
           IMAGE_ID=$(docker images --format "{{.ID}}" | head -n 1)
           
           # 标记并推送镜像（使用latest标签和版本号标签）
-          docker tag $IMAGE_ID ghcr.io/zcp1997/telegram-cf-dns-bot:latest
-          docker tag $IMAGE_ID ghcr.io/zcp1997/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
+          docker tag $IMAGE_ID zcp970603/telegram-cf-dns-bot:latest
+          docker tag $IMAGE_ID zcp970603/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
           
           # 推送两个标签的镜像
-          docker push ghcr.io/zcp1997/telegram-cf-dns-bot:latest
-          docker push ghcr.io/zcp1997/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
+          docker push zcp970603/telegram-cf-dns-bot:latest
+          docker push zcp970603/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
