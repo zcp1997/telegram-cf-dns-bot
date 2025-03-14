@@ -3,31 +3,37 @@ const { userSessions, SessionState } = require('../utils/session');
 const { ALLOWED_CHAT_IDS, DOMAIN_ZONE_MAP, CF_API_TOKEN } = require('../config');
 
 const helpMessage = '🤖 欢迎使用多域名 Cloudflare DNS 管理机器人！\n\n' +
-  '📋 可用命令：\n\n' +
-  '📝 DNS 记录管理\n' +
-  '➖➖➖➖➖➖➖➖➖➖➖➖\n' +
-  '✅ /setdns - 添加或更新 DNS 记录\n' +
-  '   • 支持 IPv4 和 IPv6 地址\n' +
-  '   • 可选择是否启用代理\n\n' +
-  '🔍 /getdns - 查询 DNS 记录\n' +
-  '   • 查看域名的详细配置\n\n' +
-  '🔍 /getdnsall - 查询所有 DNS 记录\n' +
-  '   • 查看根域名下所有记录\n\n' +
-  '❌ /deldns - 删除 DNS 记录\n' +
-  '   • 删除前会要求确认\n\n' +
-  '📊 系统信息\n' +
-  '➖➖➖➖➖➖➖➖➖➖➖➖\n' +
-  '🌐 /domains - 查看所有配置的域名\n' +
-  '👤 /listusers - 查看白名单用户列表 (仅管理员)\n' +
-  '🔧 /zonemap - 查看域名和 Zone ID 映射 (仅管理员)\n\n' +
-  '❓ /help - 显示此帮助信息\n' +
-  '💡 提示：添加、更新、删除操作都可以通过点击"取消"按钮随时终止。\n' +
-  '🔄 使用 /start 命令可以重新显示主菜单。';
+  '请选择以下操作类别：';
 
 function setupCommands(bot) {
   // 基础命令
-  bot.command('start', (ctx) => ctx.reply(helpMessage));
-  bot.command('help', (ctx) => ctx.reply(helpMessage));
+  bot.command('start', (ctx) => {
+    const helpButtons = [
+      [{ text: '📝 DNS记录管理', callback_data: 'help_dns_management' }],
+      [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
+      [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
+    ];
+    
+    ctx.reply(helpMessage, {
+      reply_markup: {
+        inline_keyboard: helpButtons
+      }
+    });
+  });
+
+  bot.command('help', (ctx) => {
+    const helpButtons = [
+      [{ text: '📝 DNS记录管理', callback_data: 'help_dns_management' }],
+      [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
+      [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
+    ];
+    
+    ctx.reply(helpMessage, {
+      reply_markup: {
+        inline_keyboard: helpButtons
+      }
+    });
+  });
 
   // 域名列表命令
   bot.command('domains', (ctx) => {
@@ -191,5 +197,6 @@ const commands = [
 
 module.exports = {
   setupCommands,
-  commands
+  commands,
+  helpMessage
 };

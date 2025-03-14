@@ -3,8 +3,76 @@ const { createOrUpdateDns, deleteDnsRecord, getDnsRecord, updateDnsRecord, delet
 const { displayDnsRecordsPage, queryDomainRecords } = require('./messages');
 const { getZoneIdForDomain } = require('../utils/domain');
 const { DNS_RECORDS_PAGE_SIZE } = require('../config');
+const { helpMessage } = require('./commands');
 
 function setupCallbacks(bot) {
+  // 处理帮助按钮回调
+  bot.action('help_dns_management', (ctx) => {
+    const dnsManagementHelp = 
+      '📝 <b>DNS 记录管理</b>\n' +
+      '➖➖➖➖➖➖➖➖➖➖➖➖\n' +
+      '✅ /setdns - 添加或更新 DNS 记录\n' +
+      '   • 支持 IPv4 和 IPv6 地址\n' +
+      '   • 可选择是否启用代理\n\n' +
+      '🔍 /getdns - 查询 DNS 记录\n' +
+      '   • 查看域名的详细配置\n\n' +
+      '🔍 /getdnsall - 查询所有 DNS 记录\n' +
+      '   • 查看根域名下所有记录\n\n' +
+      '❌ /deldns - 删除 DNS 记录\n' +
+      '   • 删除前会要求确认';
+      
+    ctx.editMessageText(dnsManagementHelp, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
+      }
+    });
+  });
+  
+  bot.action('help_system_info', (ctx) => {
+    const systemInfoHelp = 
+      '📊 <b>系统信息</b>\n' +
+      '➖➖➖➖➖➖➖➖➖➖➖➖\n' +
+      '🌐 /domains - 查看所有配置的域名\n' +
+      '👤 /listusers - 查看白名单用户列表 (仅管理员)\n' +
+      '🔧 /zonemap - 查看域名和 Zone ID 映射 (仅管理员)';
+      
+    ctx.editMessageText(systemInfoHelp, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
+      }
+    });
+  });
+  
+  bot.action('help_general', (ctx) => {
+    const generalHelp = 
+      '❓ <b>帮助信息</b>\n' +
+      '➖➖➖➖➖➖➖➖➖➖➖➖\n' +
+      '💡 提示：本机器人只对接CF官方api。添加、更新、删除操作都可以通过点击"取消"按钮随时终止。\n' +
+      '🔄 使用 /start 命令可以重新显示主菜单。';
+      
+    ctx.editMessageText(generalHelp, {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
+      }
+    });
+  });
+  
+  bot.action('help_back', (ctx) => {
+    const helpButtons = [
+      [{ text: '📝 DNS记录管理', callback_data: 'help_dns_management' }],
+      [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
+      [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
+    ];
+    
+    ctx.editMessageText(helpMessage, {
+      reply_markup: {
+        inline_keyboard: helpButtons
+      }
+    });
+  });
   // 取消操作的回调
   bot.action('cancel_setdns', (ctx) => {
     const chatId = ctx.chat.id;
@@ -153,9 +221,24 @@ function setupCallbacks(bot) {
 
   bot.action('dns_done', async (ctx) => {
     const chatId = ctx.chat.id;
-    userSessions.delete(chatId);
+    
+    // 先回答回调查询
     await ctx.answerCbQuery('查询完成');
-    await ctx.reply('DNS记录查询已完成。');
+    
+    try {
+      // 删除当前的查询结果消息
+      await ctx.deleteMessage();
+      
+      // 发送完成提示
+      await ctx.reply('DNS记录查询已完成。');
+    } catch (error) {
+      console.log('删除消息失败:', error.message);
+      // 如果删除失败，仍然发送完成提示
+      await ctx.reply('DNS记录查询已完成。');
+    }
+    
+    // 最后删除会话
+    userSessions.delete(chatId);
   });
 
   // 处理域名选择回调
@@ -163,7 +246,10 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
 
-    if (!session || session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS) {
+    // 检查会话是否存在，并且状态是选择域名、查看记录或管理记录
+    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS && 
+                     session.state !== SessionState.VIEWING_DNS_RECORDS &&
+                     session.state !== SessionState.MANAGING_DNS_RECORD)) {
       await ctx.answerCbQuery('会话已过期');
       return;
     }
@@ -180,10 +266,32 @@ function setupCallbacks(bot) {
     }
 
     await ctx.answerCbQuery();
-    await ctx.reply(`正在查询 ${domainName} 的所有DNS记录...`);
+    
+    // 如果当前正在查看记录或管理记录，先删除当前消息
+    if (session.state === SessionState.VIEWING_DNS_RECORDS || 
+        session.state === SessionState.MANAGING_DNS_RECORD) {
+      try {
+        await ctx.deleteMessage();
+      } catch (error) {
+        console.log('删除消息失败:', error.message);
+      }
+    } else {
+      await ctx.deleteMessage();
+    }
+    
+    // 显示正在查询的提示
+    const loadingMsg = await ctx.reply(`正在查询 ${domainName} 的所有DNS记录...`);
 
     try {
       const { records } = await getDnsRecord(domainName, true);
+      
+      // 尝试删除加载消息
+      try {
+        await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+      } catch (error) {
+        console.log('删除加载消息失败:', error.message);
+      }
+      
       if (records && records.length > 0) {
         // 保存记录到会话中
         session.dnsRecords = records;
@@ -198,11 +306,11 @@ function setupCallbacks(bot) {
         await displayDnsRecordsPage(ctx, session);
       } else {
         await ctx.reply(`未找到 ${domainName} 的DNS记录`);
-        userSessions.delete(chatId);
+        // 不删除会话，让用户可以继续查询其他域名
       }
     } catch (error) {
       await ctx.reply(`查询过程中发生错误: ${error.message}`);
-      userSessions.delete(chatId);
+      // 不删除会话，让用户可以继续查询其他域名
     }
   });
 
@@ -211,7 +319,9 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
 
-    if (!session || session.state !== SessionState.VIEWING_DNS_RECORDS) {
+    // 允许在查看记录和管理记录状态下点击
+    if (!session || (session.state !== SessionState.VIEWING_DNS_RECORDS && 
+                     session.state !== SessionState.MANAGING_DNS_RECORD)) {
       await ctx.answerCbQuery('会话已过期');
       return;
     }
@@ -246,6 +356,7 @@ function setupCallbacks(bot) {
       `代理状态: ${record.proxied ? '已启用' : '未启用'}`;
 
     await ctx.answerCbQuery();
+    
     await ctx.reply(
       `DNS记录详情:\n\n${recordDetails}\n\n请选择操作:`,
       {
@@ -337,7 +448,7 @@ function setupCallbacks(bot) {
     delete session.selectedRecord;
 
     await ctx.answerCbQuery();
-    await ctx.deleteMessage();
+    
     await displayDnsRecordsPage(ctx, session);
   });
 
@@ -513,7 +624,8 @@ function setupCallbacks(bot) {
     session.state = SessionState.WAITING_SUBDOMAIN_INPUT;
 
     await ctx.answerCbQuery();
-    await ctx.reply(
+    await ctx.deleteMessage();
+    const sentMsg = await ctx.reply(
       `已选择域名: ${rootDomain}\n\n` +
       `请输入子域名前缀（如：www），或直接发送 "." 查询根域名。\n\n` +
       `例如：输入 "www" 将查询 www.${rootDomain}`,
@@ -526,6 +638,9 @@ function setupCallbacks(bot) {
         }
       }
     );
+
+    // 保存消息ID到会话
+    session.waitSubDomainMessageId = sentMsg.message_id;
   });
 
   // 处理查询根域名的回调

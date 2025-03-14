@@ -75,91 +75,6 @@ async function handleIpInput(ctx, session) {
   );
 }
 
-// 处理删除域名输入
-async function handleDeleteDomainInput(ctx, session) {
-  const domainName = ctx.message.text.trim();
-  const zoneId = getZoneIdForDomain(domainName);
-
-  if (!zoneId) {
-    await ctx.reply(
-      '无法找到此域名对应的Zone ID。请确保输入了正确的域名。\n' +
-      '使用 /domains 查看可配置的域名列表。'
-    );
-    return;
-  }
-
-  try {
-    const { records } = await getDnsRecord(domainName);
-    if (!records || records.length === 0) {
-      await ctx.reply(`未找到域名 ${domainName} 的DNS记录。`);
-      userSessions.delete(ctx.chat.id);
-      return;
-    }
-
-    session.domain = domainName;
-    session.state = SessionState.WAITING_CONFIRM_DELETE;
-
-    const recordsInfo = records.map(record =>
-      `类型: ${record.type}\n内容: ${record.content}`
-    ).join('\n\n');
-
-    await ctx.reply(
-      `找到以下DNS记录：\n\n${recordsInfo}\n\n确定要删除这些记录吗？`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '确认删除', callback_data: 'confirm_delete' },
-              { text: '取消', callback_data: 'cancel_delete' }
-            ]
-          ]
-        }
-      }
-    );
-  } catch (error) {
-    await ctx.reply(`查询DNS记录时发生错误: ${error.message}`);
-    userSessions.delete(ctx.chat.id);
-  }
-}
-
-// 处理查询域名输入
-async function handleQueryDomainInput(ctx, session, getAllRecords = false) {
-  const domainName = ctx.message.text.trim();
-  const zoneId = getZoneIdForDomain(domainName);
-
-  if (!zoneId) {
-    await ctx.reply(
-      '无法找到此域名对应的Zone ID。请确保输入了正确的域名。\n' +
-      '使用 /domains 查看可配置的域名列表。'
-    );
-    return;
-  }
-
-  await ctx.reply(`正在查询 ${domainName} 的DNS记录...`);
-
-  try {
-    const { records } = await getDnsRecord(domainName, getAllRecords);
-    if (records && records.length > 0) {
-      // 保存记录到会话中
-      session.dnsRecords = records;
-      session.currentPage = 0;
-      session.pageSize = DNS_RECORDS_PAGE_SIZE; // 每页显示5条记录
-      session.totalPages = Math.ceil(records.length / session.pageSize);
-      session.state = SessionState.VIEWING_DNS_RECORDS;
-      session.getAllRecords = getAllRecords;
-
-      // 显示第一页记录
-      await displayDnsRecordsPage(ctx, session, domainName);
-    } else {
-      await ctx.reply(`未找到 ${domainName} 的DNS记录`);
-      userSessions.delete(ctx.chat.id);
-    }
-  } catch (error) {
-    await ctx.reply(`查询过程中发生错误: ${error.message}`);
-    userSessions.delete(ctx.chat.id);
-  }
-}
-
 // 显示DNS记录分页
 async function displayDnsRecordsPage(ctx, session, domainName) {
   // 确保域名被保存到会话中
@@ -222,15 +137,17 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
   // 合并所有按钮
   const inlineKeyboard = [...recordButtons, navigationButtons, actionButtons];
 
-  await ctx.reply(
-    `${session.domain} 的DNS记录 (${startIdx + 1}-${endIdx}/${session.dnsRecords.length}):\n` +
-    `点击记录可以更新或删除。🟢=已代理 🔴=未代理`,
-    {
-      reply_markup: {
-        inline_keyboard: inlineKeyboard
-      }
+  const messageText =
+    `${session.domain} 的DNS记录 (第${startIdx + 1}条-第${endIdx}条/共${session.dnsRecords.length}条记录):\n\n` +
+    `点击记录可以更新或删除。\n\n` +
+    `🟢=已代理 🔴=未代理`;
+
+  // 发送新消息
+  await ctx.reply(messageText, {
+    reply_markup: {
+      inline_keyboard: inlineKeyboard
     }
-  );
+  });
 }
 
 // 处理新IP地址输入
@@ -316,9 +233,22 @@ async function queryDomainRecords(ctx, domainName) {
       session.state = SessionState.VIEWING_DNS_RECORDS;
       session.getAllRecords = false;
 
+      await ctx.deleteMessage();
+      console.log('session.waitSubDomainMessageId:' + session.waitSubDomainMessageId);
+
+      // 尝试删除用户输入的消息
+      if (session.waitSubDomainMessageId) {
+        try {
+          await ctx.telegram.deleteMessage(ctx.chat.id, session.waitSubDomainMessageId);
+        } catch (error) {
+          console.log('删除用户消息失败:', error.message);
+          // 删除失败不影响后续操作
+        }
+      }
       // 显示记录
       await displayDnsRecordsPage(ctx, session);
-    } else {
+    }
+    else {
       // 获取会话
       const session = userSessions.get(ctx.chat.id);
 
