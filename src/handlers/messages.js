@@ -82,6 +82,11 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
     session.domain = domainName;
   }
 
+  // 初始化消息ID数组（如果不存在）
+  if (!session.getDnsMessageIds) {
+    session.getDnsMessageIds = [];
+  }
+
   const startIdx = session.currentPage * session.pageSize;
   const endIdx = Math.min(startIdx + session.pageSize, session.dnsRecords.length);
   const pageRecords = session.dnsRecords.slice(startIdx, endIdx);
@@ -143,11 +148,13 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
     `🟢=已代理 🔴=未代理`;
 
   // 发送新消息
-  await ctx.reply(messageText, {
+  const sentMsg = await ctx.reply(messageText, {
     reply_markup: {
       inline_keyboard: inlineKeyboard
     }
   });
+
+  session.getDnsMessageIds.push(sentMsg.message_id);
 }
 
 // 处理新IP地址输入

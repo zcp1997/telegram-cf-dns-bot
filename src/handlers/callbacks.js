@@ -180,8 +180,10 @@ function setupCallbacks(bot) {
   bot.action('dns_prev_page', async (ctx) => {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
-
-    if (!session || session.state !== SessionState.VIEWING_DNS_RECORDS) {
+    
+    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS && 
+      session.state !== SessionState.VIEWING_DNS_RECORDS &&
+      session.state !== SessionState.MANAGING_DNS_RECORD)) {
       await ctx.answerCbQuery('会话已过期');
       return;
     }
@@ -199,7 +201,9 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
 
-    if (!session || session.state !== SessionState.VIEWING_DNS_RECORDS) {
+    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS && 
+      session.state !== SessionState.VIEWING_DNS_RECORDS &&
+      session.state !== SessionState.MANAGING_DNS_RECORD)) {
       await ctx.answerCbQuery('会话已过期');
       return;
     }
@@ -221,21 +225,35 @@ function setupCallbacks(bot) {
 
   bot.action('dns_done', async (ctx) => {
     const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
     
     // 先回答回调查询
     await ctx.answerCbQuery('查询完成');
     
+    // 删除当前消息
     try {
-      // 删除当前的查询结果消息
       await ctx.deleteMessage();
-      
-      // 发送完成提示
-      await ctx.reply('DNS记录查询已完成。');
     } catch (error) {
-      console.log('删除消息失败:', error.message);
-      // 如果删除失败，仍然发送完成提示
-      await ctx.reply('DNS记录查询已完成。');
+      console.log('删除当前消息失败:', error.message);
     }
+    
+    // 删除所有存储的消息ID对应的消息
+    // if (session && session.getDnsMessageIds && session.getDnsMessageIds.length > 0) {
+    //   for (const msgId of session.getDnsMessageIds) {
+    //     try {
+    //       // 跳过当前消息（已经尝试删除过）
+    //       if (ctx.callbackQuery && msgId === ctx.callbackQuery.message.message_id) {
+    //         continue;
+    //       }
+    //       await ctx.telegram.deleteMessage(chatId, msgId);
+    //     } catch (error) {
+    //       console.log(`删除消息ID ${msgId} 失败:`, error.message);
+    //     }
+    //   }
+    // }
+    
+    // 发送完成提示
+    await ctx.reply('DNS记录查询已完成。');
     
     // 最后删除会话
     userSessions.delete(chatId);
@@ -245,6 +263,10 @@ function setupCallbacks(bot) {
   bot.action(/^select_domain_all_(.+)$/, async (ctx) => {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
+
+    if (!session.getDnsMessageIds) {
+      session.getDnsMessageIds = [];
+    }
 
     // 检查会话是否存在，并且状态是选择域名、查看记录或管理记录
     if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS && 
@@ -305,11 +327,13 @@ function setupCallbacks(bot) {
         // 显示第一页记录
         await displayDnsRecordsPage(ctx, session);
       } else {
-        await ctx.reply(`未找到 ${domainName} 的DNS记录`);
+        const errorMsg = await ctx.reply(`未找到 ${domainName} 的DNS记录`);
         // 不删除会话，让用户可以继续查询其他域名
+        session.getDnsMessageIds.push(errorMsg.message_id);
       }
     } catch (error) {
-      await ctx.reply(`查询过程中发生错误: ${error.message}`);
+      const errorMsg = await ctx.reply(`查询过程中发生错误: ${error.message}`);
+      session.getDnsMessageIds.push(errorMsg.message_id);
       // 不删除会话，让用户可以继续查询其他域名
     }
   });
@@ -357,7 +381,7 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     
-    await ctx.reply(
+    const sentMsg = await ctx.reply(
       `DNS记录详情:\n\n${recordDetails}\n\n请选择操作:`,
       {
         reply_markup: {
@@ -373,6 +397,12 @@ function setupCallbacks(bot) {
         }
       }
     );
+
+     // 将消息ID添加到数组中
+    if (!session.getDnsMessageIds) {
+      session.getDnsMessageIds = [];
+    }
+    session.getDnsMessageIds.push(sentMsg.message_id);
   });
 
   // 处理更新记录请求
