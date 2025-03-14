@@ -52,3 +52,12 @@ jobs:
           # 推送两个标签的镜像
           docker push zcp970603/telegram-cf-dns-bot:latest
           docker push zcp970603/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
+
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: zcp970603/telegram-cf-dns-bot
+          short-description: "A telegram bot can manage your cloudflare domain dns records "
+          readme-filepath: ./README.md      
