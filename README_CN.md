@@ -17,7 +17,6 @@
 - Docker 和 Docker Compose
 - Telegram Bot Token（从 [@BotFather](https://t.me/BotFather) 获取）
 - Cloudflare API Token（从 Cloudflare 控制面板获取）
-- 域名的 Zone ID（从 Cloudflare 控制面板获取）
 
 ## 部署方式
 

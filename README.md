@@ -19,7 +19,6 @@ This is an interactive Cloudflare DNS record management tool based on Telegram B
 - Docker and Docker Compose
 - Telegram Bot Token (obtain from [@BotFather](https://t.me/BotFather))
 - Cloudflare API Token (obtain from Cloudflare dashboard)
-- Domain Zone IDs (obtain from Cloudflare dashboard)
 
 ## Deployment Methods
 
