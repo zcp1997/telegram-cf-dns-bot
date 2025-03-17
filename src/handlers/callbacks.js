@@ -8,7 +8,7 @@ const { helpMessage } = require('./commands');
 function setupCallbacks(bot) {
   // 处理帮助按钮回调
   bot.action('help_dns_management', (ctx) => {
-    const dnsManagementHelp = 
+    const dnsManagementHelp =
       '📝 <b>DNS 记录管理</b>\n' +
       '➖➖➖➖➖➖➖➖➖➖➖➖\n' +
       '✅ /setdns - 添加或更新 DNS 记录\n' +
@@ -20,7 +20,7 @@ function setupCallbacks(bot) {
       '   • 查看根域名下所有记录\n\n' +
       '❌ /deldns - 删除 DNS 记录\n' +
       '   • 删除前会要求确认';
-      
+
     ctx.editMessageText(dnsManagementHelp, {
       parse_mode: 'HTML',
       reply_markup: {
@@ -28,15 +28,15 @@ function setupCallbacks(bot) {
       }
     });
   });
-  
+
   bot.action('help_system_info', (ctx) => {
-    const systemInfoHelp = 
+    const systemInfoHelp =
       '📊 <b>系统信息</b>\n' +
       '➖➖➖➖➖➖➖➖➖➖➖➖\n' +
       '🌐 /domains - 查看所有配置的域名\n' +
       '👤 /listusers - 查看白名单用户列表 (仅管理员)\n' +
       '🔧 /zonemap - 查看域名和 Zone ID 映射 (仅管理员)';
-      
+
     ctx.editMessageText(systemInfoHelp, {
       parse_mode: 'HTML',
       reply_markup: {
@@ -44,14 +44,14 @@ function setupCallbacks(bot) {
       }
     });
   });
-  
+
   bot.action('help_general', (ctx) => {
-    const generalHelp = 
+    const generalHelp =
       '❓ <b>帮助信息</b>\n' +
       '➖➖➖➖➖➖➖➖➖➖➖➖\n' +
       '💡 提示：本机器人只对接CF官方api。添加、更新、删除操作都可以通过点击"取消"按钮随时终止。\n' +
       '🔄 使用 /start 命令可以重新显示主菜单。';
-      
+
     ctx.editMessageText(generalHelp, {
       parse_mode: 'HTML',
       reply_markup: {
@@ -59,14 +59,14 @@ function setupCallbacks(bot) {
       }
     });
   });
-  
+
   bot.action('help_back', (ctx) => {
     const helpButtons = [
       [{ text: '📝 DNS记录管理', callback_data: 'help_dns_management' }],
       [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
       [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
     ];
-    
+
     ctx.editMessageText(helpMessage, {
       reply_markup: {
         inline_keyboard: helpButtons
@@ -180,8 +180,8 @@ function setupCallbacks(bot) {
   bot.action('dns_prev_page', async (ctx) => {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
-    
-    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS && 
+
+    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS &&
       session.state !== SessionState.VIEWING_DNS_RECORDS &&
       session.state !== SessionState.MANAGING_DNS_RECORD)) {
       await ctx.answerCbQuery('会话已过期');
@@ -201,7 +201,7 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
 
-    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS && 
+    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS &&
       session.state !== SessionState.VIEWING_DNS_RECORDS &&
       session.state !== SessionState.MANAGING_DNS_RECORD)) {
       await ctx.answerCbQuery('会话已过期');
@@ -226,17 +226,17 @@ function setupCallbacks(bot) {
   bot.action('dns_done', async (ctx) => {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
-    
+
     // 先回答回调查询
     await ctx.answerCbQuery('查询完成');
-    
+
     // 删除当前消息
     try {
       await ctx.deleteMessage();
     } catch (error) {
       console.log('删除当前消息失败:', error.message);
     }
-    
+
     // 删除所有存储的消息ID对应的消息
     if (session && session.getDnsMessageIds && session.getDnsMessageIds.length > 0) {
       for (const msgId of session.getDnsMessageIds) {
@@ -251,10 +251,10 @@ function setupCallbacks(bot) {
         }
       }
     }
-    
+
     // 发送完成提示
     await ctx.reply('DNS记录查询已完成。');
-    
+
     // 最后删除会话
     userSessions.delete(chatId);
   });
@@ -269,9 +269,9 @@ function setupCallbacks(bot) {
     }
 
     // 检查会话是否存在，并且状态是选择域名、查看记录或管理记录
-    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS && 
-                     session.state !== SessionState.VIEWING_DNS_RECORDS &&
-                     session.state !== SessionState.MANAGING_DNS_RECORD)) {
+    if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS &&
+      session.state !== SessionState.VIEWING_DNS_RECORDS &&
+      session.state !== SessionState.MANAGING_DNS_RECORD)) {
       await ctx.answerCbQuery('会话已过期');
       return;
     }
@@ -288,10 +288,10 @@ function setupCallbacks(bot) {
     }
 
     await ctx.answerCbQuery();
-    
+
     // 如果当前正在查看记录或管理记录，先删除当前消息
-    if (session.state === SessionState.VIEWING_DNS_RECORDS || 
-        session.state === SessionState.MANAGING_DNS_RECORD) {
+    if (session.state === SessionState.VIEWING_DNS_RECORDS ||
+      session.state === SessionState.MANAGING_DNS_RECORD) {
       try {
         await ctx.deleteMessage();
       } catch (error) {
@@ -300,20 +300,20 @@ function setupCallbacks(bot) {
     } else {
       await ctx.deleteMessage();
     }
-    
+
     // 显示正在查询的提示
     const loadingMsg = await ctx.reply(`正在查询 ${domainName} 的所有DNS记录...`);
 
     try {
       const { records } = await getDnsRecord(domainName, true);
-      
+
       // 尝试删除加载消息
       try {
         await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
       } catch (error) {
         console.log('删除加载消息失败:', error.message);
       }
-      
+
       if (records && records.length > 0) {
         // 保存记录到会话中
         session.dnsRecords = records;
@@ -344,8 +344,8 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     // 允许在查看记录和管理记录状态下点击
-    if (!session || (session.state !== SessionState.VIEWING_DNS_RECORDS && 
-                     session.state !== SessionState.MANAGING_DNS_RECORD)) {
+    if (!session || (session.state !== SessionState.VIEWING_DNS_RECORDS &&
+      session.state !== SessionState.MANAGING_DNS_RECORD)) {
       await ctx.answerCbQuery('会话已过期');
       return;
     }
@@ -380,7 +380,7 @@ function setupCallbacks(bot) {
       `代理状态: ${record.proxied ? '已启用' : '未启用'}`;
 
     await ctx.answerCbQuery();
-    
+
     const sentMsg = await ctx.reply(
       `DNS记录详情:\n\n${recordDetails}\n\n请选择操作:`,
       {
@@ -398,7 +398,7 @@ function setupCallbacks(bot) {
       }
     );
 
-     // 将消息ID添加到数组中
+    // 将消息ID添加到数组中
     if (!session.getDnsMessageIds) {
       session.getDnsMessageIds = [];
     }
@@ -478,7 +478,7 @@ function setupCallbacks(bot) {
     delete session.selectedRecord;
 
     await ctx.answerCbQuery();
-    
+
     await displayDnsRecordsPage(ctx, session);
   });
 
@@ -751,16 +751,16 @@ function setupCallbacks(bot) {
   bot.action('set_root_domain', async (ctx) => {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
-    
+
     if (!session || session.state !== SessionState.WAITING_SUBDOMAIN_FOR_SET) {
       await ctx.answerCbQuery('会话已过期');
       return;
     }
-    
+
     // 直接使用根域名
     session.domain = session.rootDomain;
     session.state = SessionState.WAITING_IP;
-    
+
     await ctx.answerCbQuery();
     await ctx.reply(
       `请输入 ${session.domain} 的IP地址。\n` +
@@ -780,12 +780,12 @@ function setupCallbacks(bot) {
   bot.action('del_root_domain', async (ctx) => {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
-    
+
     if (!session || session.state !== SessionState.WAITING_SUBDOMAIN_FOR_DELETE) {
       await ctx.answerCbQuery('会话已过期');
       return;
     }
-    
+
     try {
       const { records } = await getDnsRecord(session.rootDomain);
       if (!records || records.length === 0) {
@@ -794,14 +794,14 @@ function setupCallbacks(bot) {
         userSessions.delete(chatId);
         return;
       }
-      
+
       session.domain = session.rootDomain;
       session.state = SessionState.WAITING_CONFIRM_DELETE;
-      
-      const recordsInfo = records.map(record => 
+
+      const recordsInfo = records.map(record =>
         `类型: ${record.type}\n内容: ${record.content}`
       ).join('\n\n');
-      
+
       await ctx.answerCbQuery();
       await ctx.reply(
         `找到以下DNS记录：\n\n${recordsInfo}\n\n确定要删除这些记录吗？`,

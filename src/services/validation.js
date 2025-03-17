@@ -31,7 +31,7 @@ async function validateCloudflareConfig() {
     if (availableDomains.length === 0) {
       throw new Error('API Token 没有任何可管理的域名，请检查权限或EXCLUDE_DOMAINS配置');
     }
-    
+
     console.log(`Cloudflare 配置验证成功，可管理 ${availableDomains.length} 个域名`);
     return {
       success: true,

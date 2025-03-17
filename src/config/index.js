@@ -33,6 +33,9 @@ const CLEAN_SESSION_INTERVAL = 5 * 60 * 1000
 // DNS分页大小
 const DNS_RECORDS_PAGE_SIZE = 5
 
+// 缓存有效期1小时
+const CACHE_TTL = 3600000;
+
 module.exports = {
   TELEGRAM_TOKEN,
   CF_API_TOKEN,
@@ -42,5 +45,6 @@ module.exports = {
   CHECK_INTERVAL,
   CLEAN_SESSION_INTERVAL,
   DNS_RECORDS_PAGE_SIZE,
-  EXCLUDE_DOMAINS
+  EXCLUDE_DOMAINS,
+  CACHE_TTL
 };

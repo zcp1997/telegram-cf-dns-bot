@@ -13,7 +13,7 @@ function setupCommands(bot) {
       [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
       [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
     ];
-    
+
     ctx.reply(helpMessage, {
       reply_markup: {
         inline_keyboard: helpButtons
@@ -27,7 +27,7 @@ function setupCommands(bot) {
       [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
       [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
     ];
-    
+
     ctx.reply(helpMessage, {
       reply_markup: {
         inline_keyboard: helpButtons
@@ -63,7 +63,7 @@ function setupCommands(bot) {
         ctx.reply('未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。');
         return;
       }
-      
+
       let message = '请选择要设置的域名：';
 
       // 创建域名选择按钮
@@ -98,7 +98,7 @@ function setupCommands(bot) {
         ctx.reply('未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。');
         return;
       }
-      
+
       let message = '请选择要查询的域名：';
 
       // 创建域名选择按钮
@@ -133,7 +133,7 @@ function setupCommands(bot) {
         ctx.reply('未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。');
         return;
       }
-      
+
       let message = '请选择要查询的域名：';
 
       // 创建域名选择按钮
@@ -168,7 +168,7 @@ function setupCommands(bot) {
         ctx.reply('未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。');
         return;
       }
-      
+
       let message = '请选择要删除记录的域名：';
 
       // 创建域名选择按钮
@@ -205,26 +205,26 @@ function setupCommands(bot) {
       try {
         const domains = await getConfiguredDomains();
         const { EXCLUDE_DOMAINS } = require('../config');
-        
+
         if (domains.length > 0) {
           const { getZoneIdForDomain } = require('../utils/domain');
-          
+
           // 获取每个域名对应的Zone ID
           const mappingPromises = domains.map(async domain => {
             const zoneId = await getZoneIdForDomain(domain);
             return `${domain} -> ${zoneId}`;
           });
-          
+
           const mappings = await Promise.all(mappingPromises);
-          
+
           // 构建排除域名信息
-          const excludeInfo = EXCLUDE_DOMAINS && EXCLUDE_DOMAINS.length > 0 
+          const excludeInfo = EXCLUDE_DOMAINS && EXCLUDE_DOMAINS.length > 0
             ? `\n\n排除的域名:\n${EXCLUDE_DOMAINS.join('\n')}`
             : '\n\n未配置排除域名';
-          
+
           await ctx.reply(
             '域名到Zone ID的映射:\n\n' +
-            mappings.join('\n') + 
+            mappings.join('\n') +
             excludeInfo + '\n\n' +
             '当前配置状态：\n' +
             `• API Token: ${CF_API_TOKEN ? '已配置' : '未配置'}\n` +
@@ -233,10 +233,10 @@ function setupCommands(bot) {
           );
         } else {
           // 构建排除域名信息
-          const excludeInfo = EXCLUDE_DOMAINS && EXCLUDE_DOMAINS.length > 0 
+          const excludeInfo = EXCLUDE_DOMAINS && EXCLUDE_DOMAINS.length > 0
             ? `\n\n当前排除的域名:\n${EXCLUDE_DOMAINS.join('\n')}`
             : '\n\n未配置排除域名';
-          
+
           await ctx.reply('⚠️ 未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。' + excludeInfo);
         }
       } catch (error) {

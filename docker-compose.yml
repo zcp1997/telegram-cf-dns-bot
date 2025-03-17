@@ -12,7 +12,7 @@ services:
         # 允许访问的 Telegram 用户 ID（逗号分隔），第一个用户是管理员
       - ALLOWED_CHAT_IDS=123456789,987654321
       # 可选参数：排除的域名列表（逗号分隔）
-      - EXCLUDE_DOMAINS=example.com,example.org
+      # - EXCLUDE_DOMAINS=example.com,example.org
 
     volumes:
       - ./src:/app/src

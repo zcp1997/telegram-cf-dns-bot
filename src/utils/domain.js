@@ -1,11 +1,10 @@
-const { CF_API_TOKEN, EXCLUDE_DOMAINS } = require('../config');
+const { CF_API_TOKEN, EXCLUDE_DOMAINS, CACHE_TTL } = require('../config');
 const axios = require('axios');
 const { CF_API_BASE } = require('../config');
 
 // 缓存域名到zoneId的映射
 let domainZoneCache = null;
 let lastCacheTime = 0;
-const CACHE_TTL = 3600000; // 缓存有效期1小时
 
 // 获取所有可用区域及其ID的映射
 async function fetchZonesMapping() {
@@ -71,7 +70,7 @@ async function getAvailableDomains() {
     domainZoneCache = await fetchZonesMapping();
     lastCacheTime = now;
   }
-  
+
   return Object.keys(domainZoneCache);
 }
 
