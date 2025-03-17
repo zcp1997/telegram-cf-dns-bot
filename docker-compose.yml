@@ -11,13 +11,8 @@ services:
       - CF_API_TOKEN=your_api_token_here
         # 允许访问的 Telegram 用户 ID（逗号分隔），第一个用户是管理员
       - ALLOWED_CHAT_IDS=123456789,987654321
-        # 域名到 Zone ID 的映射（JSON 格式）
-      - 'DOMAIN_ZONE_MAP=
-        {
-          "example.com": "zone_id_1",
-          "example.org": "zone_id_2",
-          "another-domain.com": "zone_id_3"
-        }'
+      # 可选参数：排除的域名列表（逗号分隔）
+      - EXCLUDE_DOMAINS=example.com,example.org
 
     volumes:
       - ./src:/app/src

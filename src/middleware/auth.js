@@ -22,15 +22,14 @@ const checkAccessWithCache = async (ctx, next) => {
   if (now - lastCheckTime > CHECK_INTERVAL) {
     const cfValidation = await validateCloudflareConfig();
     if (!cfValidation.success) {
-      console.error(`定配置检查失败: ${cfValidation.message}`);
+      console.error(`定期配置检查失败: ${cfValidation.message}`);
       if (chatId === ALLOWED_CHAT_IDS[0]) {
         await ctx.reply(
           '⚠️ Bot 配置错误\n\n' +
           `错误详情：${cfValidation.message}\n\n` +
           '请检查以下配置：\n' +
           '1. CF_API_TOKEN 是否正确\n' +
-          '2. DOMAIN_ZONE_MAP 是否正确配置\n' +
-          '3. Cloudflare API 是否可访问'
+          '2. Cloudflare API 是否可访问'
         );
       } else {
         await ctx.reply('Bot 配置有误，请联系管理员。');

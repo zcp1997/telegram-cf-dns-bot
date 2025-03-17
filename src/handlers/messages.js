@@ -1,5 +1,4 @@
 const { userSessions, SessionState } = require('../utils/session');
-const { getZoneIdForDomain } = require('../utils/domain');
 const { getDnsRecord } = require('../services/cloudflare');
 const { validateIpAddress } = require('../services/validation');
 const { DNS_RECORDS_PAGE_SIZE } = require('../config');

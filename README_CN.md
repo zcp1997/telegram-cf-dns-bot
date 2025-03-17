@@ -38,13 +38,9 @@ services:
       - CF_API_TOKEN=your_api_token_here
       # 允许访问的 Telegram 用户 ID（逗号分隔），第一个用户是管理员
       - ALLOWED_CHAT_IDS=123456789,987654321
-      # 域名到 Zone ID 的映射（JSON 格式）
-      - 'DOMAIN_ZONE_MAP=
-        {
-          "example.com": "zone_id_1",
-          "example.org": "zone_id_2",
-          "another-domain.com": "zone_id_3"
-        }'
+      # 可选参数：排除的域名列表（逗号分隔）
+      #- EXCLUDE_DOMAINS=example.com,example.org
+
 ```
 
 #### 小贴士
@@ -60,14 +56,13 @@ jq '[.result[] | {key: .name, value: .id}] | from_entries'
    - 替换 `your_telegram_token_here` 为您的 Telegram Bot Token
    - 替换 `your_api_token_here` 为您的 Cloudflare API Token
    - 替换 `ALLOWED_CHAT_IDS` 中的用户ID为您允许访问的用户ID
-   - 在 `DOMAIN_ZONE_MAP` 中配置您的域名和对应的 Zone ID
 
 3. 启动服务：
 ```bash
 docker compose up -d
 ```
 
-4. 查看日志：
+1. 查看日志：
 ```bash
 docker compose logs -f
 ```
@@ -131,8 +126,8 @@ docker compose up -d
 |--------|------|------|
 | TELEGRAM_TOKEN | Telegram Bot Token | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
 | CF_API_TOKEN | Cloudflare API Token | `your-api-token-here` |
-| DOMAIN_ZONE_MAP | 域名到 Zone ID 的映射 | `{"example.com":"abc123","example.org":"def456"}` |
 | ALLOWED_CHAT_IDS | 允许访问的用户 ID | `123456789,987654321` |
+| EXCLUDE_DOMAINS | 排除的域名列表（逗号分隔） | `example.com,example.org` |
 
 ## 故障排除
 
@@ -142,7 +137,6 @@ docker compose up -d
 
 2. 如果无法管理 DNS：
    - 确认 `CF_API_TOKEN` 权限是否正确
-   - 检查 `DOMAIN_ZONE_MAP` 格式是否正确
 
 3. 如果无法访问 Bot：
    - 确认您的 Telegram 用户 ID 是否在 `ALLOWED_CHAT_IDS` 中

@@ -1,15 +1,11 @@
 const axios = require('axios');
 const net = require('net');
-const { CF_API_TOKEN, CF_API_BASE, DOMAIN_ZONE_MAP } = require('../config');
+const { CF_API_TOKEN, CF_API_BASE } = require('../config');
+const { getAvailableDomains } = require('../utils/domain');
 
-const zoneTodomainMap = {};
-for (const [domain, zoneId] of Object.entries(DOMAIN_ZONE_MAP)) {
-  zoneTodomainMap[String(zoneId)] = domain;
-}
 /**
  * 验证 Cloudflare 配置
  * 检查 API Token 是否有效
- * 验证所有配置的 Zone 是否可访问
  */
 async function validateCloudflareConfig() {
   try {
@@ -18,79 +14,28 @@ async function validateCloudflareConfig() {
       throw new Error('未配置 CF_API_TOKEN');
     }
 
-    if (!DOMAIN_ZONE_MAP || Object.keys(DOMAIN_ZONE_MAP).length === 0) {
-      throw new Error('未配置 DOMAIN_ZONE_MAP 或配置为空');
+    // 验证API Token是否有效
+    const response = await axios.get(`${CF_API_BASE}`, {
+      headers: {
+        'Authorization': `Bearer ${CF_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.data.success) {
+      throw new Error('API Token 无效或无权限访问 Cloudflare API');
     }
 
-    // 获取所有配置的 zone ID（去重）
-    const zoneIds = [...new Set(Object.values(DOMAIN_ZONE_MAP))];
-    console.log(`开始验证 ${zoneIds.length} 个 Zone...`);
-    
-    // 验证所有 zone
-    const results = await Promise.allSettled(
-      zoneIds.map(async (zoneId) => {
-        try {
-          const response = await axios.get(`${CF_API_BASE}/${zoneId}`, {
-            headers: {
-              'Authorization': `Bearer ${CF_API_TOKEN}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (!response.data.success) {
-            throw new Error(`Zone ${zoneId} API 响应不成功`);
-          }
-          
-          return {
-            zoneId,
-            success: true,
-            name: response.data.result.name
-          };
-        } catch (error) {
-          return {
-            zoneId,
-            success: false,
-            error: error.message
-          };
-        }
-      })
-    );
-    
-    // 检查验证结果
-    const failedZones = results
-      .filter(result => result.status === 'rejected' || (result.status === 'fulfilled' && !result.value.success))
-      .map(result => {
-        if (result.status === 'rejected') {
-          return { zoneId: result.reason, error: '请求失败' };
-        } else {
-          return { zoneId: result.value.zoneId, error: result.value.error };
-        }
-      });
-    
-    if (failedZones.length > 0) {
-      // 将 Zone ID 映射回域名
-      const failedDetails = failedZones.map(item => {
-        // 查找对应的域名
-        let domainName = '未知域名';
-        
-        // 遍历所有域名映射，查找匹配的 Zone ID
-        for (const [domain, id] of Object.entries(DOMAIN_ZONE_MAP)) {
-          if (String(id) === String(item.zoneId)) {
-            domainName = domain;
-            break;
-          }
-        }
-        
-        return `域名: ${domainName} (Zone ID: ${item.zoneId})\n错误: ${item.error}`;
-      });
-      
-      throw new Error(`以下域名验证失败:\n${failedDetails.join('\n\n')}`);
+    // 检查是否有可用的域名
+    const availableDomains = await getAvailableDomains();
+    if (availableDomains.length === 0) {
+      throw new Error('API Token 没有任何可管理的域名，请检查权限或EXCLUDE_DOMAINS配置');
     }
     
-    console.log(`cloudflare ${zoneIds.length} 个 Zone 验证成功`);
+    console.log(`Cloudflare 配置验证成功，可管理 ${availableDomains.length} 个域名`);
     return {
       success: true,
-      message: `Cloudflare 配置验证成功，已验证 ${zoneIds.length} 个 Zone`
+      message: `Cloudflare 配置验证成功，可管理 ${availableDomains.length} 个域名`
     };
   } catch (error) {
     console.error('Cloudflare 配置验证失败:', error);
@@ -103,32 +48,17 @@ async function validateCloudflareConfig() {
 
 /**
  * 验证域名配置
- * 检查域名是否在配置的 Zone 中
+ * 检查域名是否在可管理的域名中
  */
 async function validateDomainConfig(domain) {
   try {
-    const zoneId = Object.entries(DOMAIN_ZONE_MAP)
-      .find(([configDomain]) => domain.endsWith(configDomain))?.[1];
+    const { getZoneIdForDomain } = require('../utils/domain');
+    const zoneId = await getZoneIdForDomain(domain);
 
     if (!zoneId) {
       return {
         success: false,
-        message: `域名 ${domain} 不在任何已配置的 Zone 中`
-      };
-    }
-
-    // 验证 Zone 访问权限
-    const response = await axios.get(`${CF_API_BASE}/${zoneId}`, {
-      headers: {
-        'Authorization': `Bearer ${CF_API_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.data.success) {
-      return {
-        success: false,
-        message: `无法访问域名 ${domain} 所在的 Zone (${zoneId})`
+        message: `域名 ${domain} 不在任何可管理的 Zone 中`
       };
     }
 
