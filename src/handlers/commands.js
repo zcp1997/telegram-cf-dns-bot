@@ -204,6 +204,8 @@ function setupCommands(bot) {
     if (ALLOWED_CHAT_IDS[0] === chatId) {
       try {
         const domains = await getConfiguredDomains();
+        const { EXCLUDE_DOMAINS } = require('../config');
+        
         if (domains.length > 0) {
           const { getZoneIdForDomain } = require('../utils/domain');
           
@@ -215,15 +217,27 @@ function setupCommands(bot) {
           
           const mappings = await Promise.all(mappingPromises);
           
+          // 构建排除域名信息
+          const excludeInfo = EXCLUDE_DOMAINS && EXCLUDE_DOMAINS.length > 0 
+            ? `\n\n排除的域名:\n${EXCLUDE_DOMAINS.join('\n')}`
+            : '\n\n未配置排除域名';
+          
           await ctx.reply(
             '域名到Zone ID的映射:\n\n' +
-            mappings.join('\n') + '\n\n' +
+            mappings.join('\n') + 
+            excludeInfo + '\n\n' +
             '当前配置状态：\n' +
             `• API Token: ${CF_API_TOKEN ? '已配置' : '未配置'}\n` +
-            `• 可管理域名数量: ${domains.length}`
+            `• 可管理域名数量: ${domains.length}\n` +
+            `• 排除域名数量: ${EXCLUDE_DOMAINS ? EXCLUDE_DOMAINS.length : 0}`
           );
         } else {
-          await ctx.reply('⚠️ 未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。');
+          // 构建排除域名信息
+          const excludeInfo = EXCLUDE_DOMAINS && EXCLUDE_DOMAINS.length > 0 
+            ? `\n\n当前排除的域名:\n${EXCLUDE_DOMAINS.join('\n')}`
+            : '\n\n未配置排除域名';
+          
+          await ctx.reply('⚠️ 未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。' + excludeInfo);
         }
       } catch (error) {
         await ctx.reply(`获取域名映射失败: ${error.message}`);
