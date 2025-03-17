@@ -278,7 +278,7 @@ function setupCallbacks(bot) {
 
     // 从回调数据中提取域名
     const domainName = ctx.match[1];
-    const zoneId = getZoneIdForDomain(domainName);
+    const zoneId = await getZoneIdForDomain(domainName);
 
     if (!zoneId) {
       await ctx.answerCbQuery('无法找到此域名对应的Zone ID');

@@ -40,27 +40,21 @@ services:
       - CF_API_TOKEN=your_api_token_here
       # Allowed Telegram user IDs (comma-separated), first user is admin
       - ALLOWED_CHAT_IDS=123456789,987654321
-      # Domain to Zone ID mapping (JSON format)
-      - 'DOMAIN_ZONE_MAP=
-        {
-          "example.com": "zone_id_1",
-          "example.org": "zone_id_2",
-          "another-domain.com": "zone_id_3"
-        }'
+      # Optional parameter: List of excluded domains (comma-separated)
+      #- EXCLUDE_DOMAINS=example.com,example.org
 ```
 
 2. Edit the `docker-compose.yml` file, filling in the necessary configuration:
    - Replace `your_telegram_token_here` with your Telegram Bot Token
    - Replace `your_api_token_here` with your Cloudflare API Token
    - Replace user IDs in `ALLOWED_CHAT_IDS` with your allowed user IDs
-   - Configure your domains and corresponding Zone IDs in `DOMAIN_ZONE_MAP`
 
 3. Start the service:
 ```bash
 docker compose up -d
 ```
 
-4. View logs:
+1. View logs:
 ```bash
 docker compose logs -f
 ```
@@ -124,8 +118,8 @@ When creating an API Token, include the following permissions:
 |----------|-------------|---------|
 | TELEGRAM_TOKEN | Telegram Bot Token | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
 | CF_API_TOKEN | Cloudflare API Token | `your-api-token-here` |
-| DOMAIN_ZONE_MAP | Domain to Zone ID mapping | `{"example.com":"abc123","example.org":"def456"}` |
 | ALLOWED_CHAT_IDS | Allowed user IDs | `123456789,987654321` |
+| EXCLUDE_DOMAINS | Excude domains | `example.com,example.org` |
 
 ## Troubleshooting
 
@@ -135,7 +129,6 @@ When creating an API Token, include the following permissions:
 
 2. If unable to manage DNS:
    - Confirm `CF_API_TOKEN` has correct permissions
-   - Check if `DOMAIN_ZONE_MAP` format is correct
 
 3. If unable to access the Bot:
    - Confirm your Telegram user ID is in `ALLOWED_CHAT_IDS`

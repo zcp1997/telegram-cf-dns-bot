@@ -4,7 +4,7 @@ const { getZoneIdForDomain } = require('../utils/domain');
 
 // Cloudflare API 函数
 async function getDnsRecord(domainName, getAllRecords = false) {
-  const zoneId = getZoneIdForDomain(domainName);
+  const zoneId = await getZoneIdForDomain(domainName);
   if (!zoneId) {
     throw new Error(`找不到域名 ${domainName} 对应的Zone ID，请检查配置`);
   }
@@ -113,6 +113,9 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
     };
   } catch (error) {
     console.error('操作DNS记录失败:', error.message);
+    if (error.response) {
+      console.error('错误详情:', error.response.status, error.response.data);
+    }
     return {
       success: false,
       message: `操作失败: ${error.message}`
@@ -254,10 +257,36 @@ async function updateDnsRecord(zoneId, recordId, name, content, type, proxied) {
   }
 }
 
+// 获取所有可用区域及其ID的映射
+async function getZonesMapping() {
+  try {
+    const response = await axios.get(`${CF_API_BASE}`, {
+      headers: {
+        'Authorization': `Bearer ${CF_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.data.success && response.data.result.length > 0) {
+      // 创建域名到zoneId的映射
+      const mapping = {};
+      response.data.result.forEach(zone => {
+        mapping[zone.name] = zone.id;
+      });
+      return mapping;
+    }
+    return {};
+  } catch (error) {
+    console.error('获取域名区域映射失败:', error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   getDnsRecord,
   createOrUpdateDns,
   deleteDnsRecord,
   deleteSingleDnsRecord,
-  updateDnsRecord
+  updateDnsRecord,
+  getZonesMapping
 };
