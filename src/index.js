@@ -63,7 +63,7 @@ async function startBot() {
     setupAutoSave(DDNS_SAVE_INTERVAL_SECONDS); // 每5分钟保存一次
 
     if (restoredCount > 0) {
-      console.log('7. 已恢复${restoredCount}个DDNS任务');
+      console.log(`7. 已恢复${restoredCount}个DDNS任务`);
     }
 
     console.log('=== Bot 启动和配置完成 ===');
