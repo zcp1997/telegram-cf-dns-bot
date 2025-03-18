@@ -2,6 +2,7 @@ const { userSessions, SessionState } = require('../utils/session');
 const { getDnsRecord } = require('../services/cloudflare');
 const { validateIpAddress } = require('../services/validation');
 const { DNS_RECORDS_PAGE_SIZE } = require('../config');
+const { trackMessage, createTrackedReply } = require('../utils/messageManager');
 
 function setupMessageHandlers(bot) {
   bot.on('text', async (ctx) => {
@@ -49,10 +50,15 @@ function setupMessageHandlers(bot) {
 // 处理IP地址输入
 async function handleIpInput(ctx, session) {
   const ipAddress = ctx.message.text.trim();
+  const chatId = ctx.chat.id;
+  
+  // 跟踪用户输入消息
+  trackMessage(chatId, ctx.message.message_id, 'setdns');
 
   const validationResult = validateIpAddress(ipAddress);
   if (!validationResult.success) {
-    await ctx.reply(validationResult.message);
+    const errorMsg = await ctx.reply(validationResult.message);
+    trackMessage(chatId, errorMsg.message_id, 'setdns');
     return;
   }
 
@@ -62,7 +68,7 @@ async function handleIpInput(ctx, session) {
   session.recordType = recordType;
   session.state = SessionState.WAITING_PROXY;
 
-  await ctx.reply(
+  await createTrackedReply(ctx, 'setdns')(
     `是否启用 Cloudflare 代理？\n\n` +
     `注意：某些服务（如 SSH、FTP 等）可能需要关闭代理才能正常使用。`,
     {
@@ -89,8 +95,8 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
   }
 
   // 初始化消息ID数组（如果不存在）
-  if (!session.getDnsMessageIds) {
-    session.getDnsMessageIds = [];
+  if (!session.viewingRecordsMessageIds) {
+    session.viewingRecordsMessageIds = [];
   }
 
   const startIdx = session.currentPage * session.pageSize;
@@ -160,7 +166,7 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
     }
   });
 
-  session.getDnsMessageIds.push(sentMsg.message_id);
+  session.viewingRecordsMessageIds.push(sentMsg.message_id);
 }
 
 // 处理新IP地址输入
@@ -246,18 +252,8 @@ async function queryDomainRecords(ctx, domainName) {
       session.state = SessionState.VIEWING_DNS_RECORDS;
       session.getAllRecords = false;
 
+      // 删除消息
       await ctx.deleteMessage();
-      console.log('session.waitSubDomainMessageId:' + session.waitSubDomainMessageId);
-
-      // 尝试删除用户输入的消息
-      if (session.waitSubDomainMessageId) {
-        try {
-          await ctx.telegram.deleteMessage(ctx.chat.id, session.waitSubDomainMessageId);
-        } catch (error) {
-          console.log('删除用户消息失败:', error.message);
-          // 删除失败不影响后续操作
-        }
-      }
       // 显示记录
       await displayDnsRecordsPage(ctx, session);
     }
@@ -323,11 +319,13 @@ async function queryDomainRecords(ctx, domainName) {
 async function handleSubdomainForSet(ctx, session) {
   const prefix = ctx.message.text.trim();
   const fullDomain = prefix === '.' ? session.rootDomain : `${prefix}.${session.rootDomain}`;
+  const chatId = ctx.chat.id;
+  trackMessage(chatId, ctx.message.message_id, 'setdns');
 
   session.domain = fullDomain;
   session.state = SessionState.WAITING_IP;
 
-  await ctx.reply(
+  const ipMsg = await ctx.reply(
     `请输入 ${fullDomain} 的IP地址。\n` +
     '支持IPv4（例如：192.168.1.1）\n' +
     '或IPv6（例如：2001:db8::1）',
@@ -339,12 +337,17 @@ async function handleSubdomainForSet(ctx, session) {
       }
     }
   );
+  
+  trackMessage(chatId, ipMsg.message_id, 'setdns');
 }
 
 // 处理删除DNS的子域名输入
 async function handleSubdomainForDelete(ctx, session) {
   const prefix = ctx.message.text.trim();
   const fullDomain = prefix === '.' ? session.rootDomain : `${prefix}.${session.rootDomain}`;
+  const chatId = ctx.chat.id;
+  trackMessage(chatId, ctx.message.message_id, 'setdns');
+
 
   try {
     const { records } = await getDnsRecord(fullDomain);
@@ -372,7 +375,7 @@ async function handleSubdomainForDelete(ctx, session) {
       `类型: ${record.type}\n内容: ${record.content}`
     ).join('\n\n');
 
-    await ctx.reply(
+    await createTrackedReply(ctx, 'deldns')(
       `找到以下DNS记录：\n\n${recordsInfo}\n\n确定要删除这些记录吗？`,
       {
         reply_markup: {
@@ -385,6 +388,7 @@ async function handleSubdomainForDelete(ctx, session) {
         }
       }
     );
+    
   } catch (error) {
     await ctx.reply(`查询DNS记录时发生错误: ${error.message}`);
     userSessions.delete(ctx.chat.id);

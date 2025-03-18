@@ -5,6 +5,7 @@ const { getZoneIdForDomain } = require('../utils/domain');
 const { DNS_RECORDS_PAGE_SIZE } = require('../config');
 const { helpMessage } = require('./commands');
 const { stopDDNS, getAllDDNSTasks } = require('../services/ddns');
+const { deleteProcessMessages, createTrackedReply } = require('../utils/messageManager');
 
 function setupCallbacks(bot) {
   // 处理帮助按钮回调
@@ -29,6 +30,33 @@ function setupCallbacks(bot) {
       '⏹️ /stopddns - 停止DDNS任务';
 
     ctx.editMessageText(dnsManagementHelp, {
+<<<<<<< Updated upstream
+=======
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
+      }
+    });
+  });
+
+  // 处理DDNS管理帮助回调
+  bot.action('help_ddns_management', async (ctx) => {
+    const ddnsHelpMessage =
+      '🔄 <b>DDNS动态域名管理</b>\n\n' +
+      '动态DNS服务允许您自动更新域名指向的IP地址，特别适合家庭宽带等动态IP环境。\n\n' +
+      '<b>可用命令：</b>\n' +
+      '• /ddns - 设置新的DDNS任务\n' +
+      '• /ddnsstatus - 查看所有DDNS任务状态\n' +
+      '• /stopddns - 停止指定的DDNS任务\n\n' +
+      '<b>DDNS功能亮点：</b>\n' +
+      '• 自动检测IPv4和IPv6地址变化\n' +
+      '• 支持多域名同时监控\n' +
+      '• 可自定义更新频率（60秒-24小时）\n' +
+      '• IP变更时自动推送通知\n' +
+      '• 针对中国大陆优化的动态IP检测';
+
+    await ctx.editMessageText(ddnsHelpMessage, {
+>>>>>>> Stashed changes
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
@@ -81,10 +109,14 @@ function setupCallbacks(bot) {
     });
   });
   // 取消操作的回调
-  bot.action('cancel_setdns', (ctx) => {
+  bot.action('cancel_setdns', async (ctx) => {
     const chatId = ctx.chat.id;
+
+    // 删除所有相关消息
+    await deleteProcessMessages(ctx.telegram, chatId, 'setdns', ctx.callbackQuery.message.message_id);
+
     userSessions.delete(chatId);
-    ctx.editMessageText('已取消DNS记录设置操作。');
+    await ctx.editMessageText('已取消DNS记录设置操作。');
   });
 
   bot.action('cancel_getdns', async (ctx) => {
@@ -126,7 +158,11 @@ function setupCallbacks(bot) {
         session.recordType,
         true
       );
+      // 先发送成功消息
       await ctx.reply(result.message);
+
+      // 然后删除之前的所有消息
+      await deleteProcessMessages(ctx.telegram, chatId, 'setdns', ctx.callbackQuery.message.message_id);
     } catch (error) {
       await ctx.reply(`处理过程中发生错误: ${error.message}`);
     }
@@ -155,6 +191,8 @@ function setupCallbacks(bot) {
         false
       );
       await ctx.reply(result.message);
+
+      await deleteProcessMessages(ctx.telegram, chatId, 'setdns', ctx.callbackQuery.message.message_id);
     } catch (error) {
       await ctx.reply(`处理过程中发生错误: ${error.message}`);
     }
@@ -197,7 +235,6 @@ function setupCallbacks(bot) {
 
     if (session.currentPage > 0) {
       session.currentPage--;
-      await ctx.deleteMessage();
       await displayDnsRecordsPage(ctx, session);
     }
 
@@ -217,7 +254,6 @@ function setupCallbacks(bot) {
 
     if (session.currentPage < session.totalPages - 1) {
       session.currentPage++;
-      await ctx.deleteMessage();
       await displayDnsRecordsPage(ctx, session);
     }
 
@@ -234,19 +270,13 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
 
+    await ctx.deleteMessage();
     // 先回答回调查询
     await ctx.answerCbQuery('查询完成');
 
-    // 删除当前消息
-    try {
-      await ctx.deleteMessage();
-    } catch (error) {
-      console.log('删除当前消息失败:', error.message);
-    }
-
-    // 删除所有存储的消息ID对应的消息
-    if (session && session.getDnsMessageIds && session.getDnsMessageIds.length > 0) {
-      for (const msgId of session.getDnsMessageIds) {
+    // 删除所有存储的之前查询消息ID对应的消息
+    if (session && session.viewingRecordsMessageIds && session.viewingRecordsMessageIds.length > 0) {
+      for (const msgId of session.viewingRecordsMessageIds) {
         try {
           // 跳过当前消息（已经尝试删除过）
           if (ctx.callbackQuery && msgId === ctx.callbackQuery.message.message_id) {
@@ -271,8 +301,8 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
 
-    if (!session.getDnsMessageIds) {
-      session.getDnsMessageIds = [];
+    if (!session.viewingRecordsMessageIds) {
+      session.viewingRecordsMessageIds = [];
     }
 
     // 检查会话是否存在，并且状态是选择域名、查看记录或管理记录
@@ -293,33 +323,15 @@ function setupCallbacks(bot) {
       userSessions.delete(chatId);
       return;
     }
-
     await ctx.answerCbQuery();
-
-    // 如果当前正在查看记录或管理记录，先删除当前消息
-    if (session.state === SessionState.VIEWING_DNS_RECORDS ||
-      session.state === SessionState.MANAGING_DNS_RECORD) {
-      try {
-        await ctx.deleteMessage();
-      } catch (error) {
-        console.log('删除消息失败:', error.message);
-      }
-    } else {
-      await ctx.deleteMessage();
-    }
+    await ctx.deleteMessage();
 
     // 显示正在查询的提示
     const loadingMsg = await ctx.reply(`正在查询 ${domainName} 的所有DNS记录...`);
+    session.viewingRecordsMessageIds.push(loadingMsg.message_id);
 
     try {
       const { records } = await getDnsRecord(domainName, true);
-
-      // 尝试删除加载消息
-      try {
-        await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
-      } catch (error) {
-        console.log('删除加载消息失败:', error.message);
-      }
 
       if (records && records.length > 0) {
         // 保存记录到会话中
@@ -333,14 +345,15 @@ function setupCallbacks(bot) {
 
         // 显示第一页记录
         await displayDnsRecordsPage(ctx, session);
-      } else {
+      }
+      else {
         const errorMsg = await ctx.reply(`未找到 ${domainName} 的DNS记录`);
         // 不删除会话，让用户可以继续查询其他域名
-        session.getDnsMessageIds.push(errorMsg.message_id);
+        session.viewingRecordsMessageIds.push(errorMsg.message_id);
       }
     } catch (error) {
       const errorMsg = await ctx.reply(`查询过程中发生错误: ${error.message}`);
-      session.getDnsMessageIds.push(errorMsg.message_id);
+      session.viewingRecordsMessageIds.push(errorMsg.message_id);
       // 不删除会话，让用户可以继续查询其他域名
     }
   });
@@ -406,10 +419,10 @@ function setupCallbacks(bot) {
     );
 
     // 将消息ID添加到数组中
-    if (!session.getDnsMessageIds) {
-      session.getDnsMessageIds = [];
+    if (!session.viewingRecordsMessageIds) {
+      session.viewingRecordsMessageIds = [];
     }
-    session.getDnsMessageIds.push(sentMsg.message_id);
+    session.viewingRecordsMessageIds.push(sentMsg.message_id);
   });
 
   // 处理更新记录请求
@@ -660,8 +673,8 @@ function setupCallbacks(bot) {
     session.rootDomain = rootDomain;
     session.state = SessionState.WAITING_SUBDOMAIN_INPUT;
 
-    await ctx.answerCbQuery();
     await ctx.deleteMessage();
+    await ctx.answerCbQuery();
     const sentMsg = await ctx.reply(
       `已选择域名: ${rootDomain}\n\n` +
       `请输入子域名前缀（如：www），或直接发送 "." 查询根域名。\n\n` +
@@ -676,8 +689,10 @@ function setupCallbacks(bot) {
       }
     );
 
-    // 保存消息ID到会话
-    session.waitSubDomainMessageId = sentMsg.message_id;
+    if (!session.viewingRecordsMessageIds) {
+      session.viewingRecordsMessageIds = [];
+    }
+    session.viewingRecordsMessageIds.push(sentMsg.message_id);
   });
 
   // 处理查询根域名的回调
@@ -709,7 +724,7 @@ function setupCallbacks(bot) {
     session.state = SessionState.WAITING_SUBDOMAIN_FOR_SET;
 
     await ctx.answerCbQuery();
-    await ctx.reply(
+    await createTrackedReply(ctx, 'setdns')(
       `已选择域名: ${rootDomain}\n\n` +
       `请输入子域名前缀（如：www），或直接发送 "." 设置根域名。\n\n` +
       `例如：输入 "www" 将设置 www.${rootDomain}`,
@@ -769,7 +784,7 @@ function setupCallbacks(bot) {
     session.state = SessionState.WAITING_IP;
 
     await ctx.answerCbQuery();
-    await ctx.reply(
+    await createTrackedReply(ctx, 'setdns')(
       `请输入 ${session.domain} 的IP地址。\n` +
       '支持IPv4（例如：192.168.1.1）\n' +
       '或IPv6（例如：2001:db8::1）',
@@ -845,7 +860,6 @@ function setupCallbacks(bot) {
     session.state = SessionState.WAITING_SUBDOMAIN_FOR_DDNS;
 
     await ctx.answerCbQuery();
-    await ctx.deleteMessage();
     await ctx.reply(
       `已选择域名: ${rootDomain}\n\n` +
       `请输入子域名前缀（如：www），或直接发送 "." 设置根域名。\n\n` +
@@ -876,7 +890,6 @@ function setupCallbacks(bot) {
     session.state = SessionState.WAITING_INTERVAL_FOR_DDNS;
 
     await ctx.answerCbQuery();
-    await ctx.deleteMessage();
     await ctx.reply(
       `请输入 ${session.domain} 的DDNS刷新间隔（秒）。\n或选择预设事件间隔：`,
       {

@@ -1,6 +1,7 @@
 const { getConfiguredDomains } = require('../utils/domain');
 const { userSessions, SessionState } = require('../utils/session');
 const { ALLOWED_CHAT_IDS, CF_API_TOKEN } = require('../config');
+const { trackMessage, createTrackedReply } = require('../utils/messageManager');
 
 const helpMessage = '🤖 欢迎使用多域名 Cloudflare DNS 管理机器人！\n\n' +
   '请选择以下操作类别：';
@@ -54,8 +55,11 @@ function setupCommands(bot) {
     const chatId = ctx.chat.id;
     userSessions.set(chatId, {
       state: SessionState.SELECTING_DOMAIN_FOR_SET,
-      lastUpdate: Date.now()
+      lastUpdate: Date.now() // 初始化消息ID数组并记录命令消息
     });
+
+    // 跟踪命令消息
+    trackMessage(chatId, ctx.message.message_id, 'setdns');
 
     try {
       const domains = await getConfiguredDomains();
@@ -74,11 +78,13 @@ function setupCommands(bot) {
       // 添加取消按钮
       domainButtons.push([{ text: '取消操作', callback_data: 'cancel_setdns' }]);
 
-      await ctx.reply(message, {
+      const sentMsg = await ctx.reply(message, {
         reply_markup: {
           inline_keyboard: domainButtons
         }
       });
+
+      trackMessage(chatId, sentMsg.message_id, 'setdns');
     } catch (error) {
       ctx.reply(`获取域名列表失败: ${error.message}`);
     }
@@ -238,6 +244,17 @@ function setupCommands(bot) {
       const lastUpdateStr = task.lastUpdate
         ? task.lastUpdate.toLocaleString()
         : '尚未更新';
+<<<<<<< Updated upstream
+=======
+
+      // 根据IPv6启用状态显示不同信息
+      let ipv6Info;
+      if (task.enableIPv6) {
+        ipv6Info = `IPv6: ${task.lastIPv6 || '获取中...'} (已启用)`;
+      } else {
+        ipv6Info = `IPv6: 未启用`;
+      }
+>>>>>>> Stashed changes
 
       return `域名: ${task.domain}\n` +
         `刷新间隔: ${task.interval}秒\n` +
