@@ -41,15 +41,17 @@ services:
       # Allowed Telegram User IDs (comma-separated), first user is admin
       - ALLOWED_CHAT_IDS=123456789,987654321
       # DNS Optional Paramter: Excluded domains list (comma-separated)
-      #- EXCLUDE_DOMAINS=example.com,example.org
+      # - EXCLUDE_DOMAINS=example.com,example.org
       # DDNS Optional Paramter: Is the bot deployed in mainland China (default is false)
-      #- IN_CHINA=false
+      # - IN_CHINA=false
+      # DDNS Optional Paramter：enable IPv6 DDNS update (default is false)
+      # - ENABLE_IPV6_DDNS=false
 
     volumes:
       - ./config:/app/config   
 
     # ipv6 configuration
-    #networks:
+    # networks:
       #- ipv6_network  
 
 # networks:
@@ -152,6 +154,7 @@ When creating an API Token, include these permissions:
 | ALLOWED_CHAT_IDS | Allowed user IDs (comma-separated) | Yes      | `123456789,987654321`                          |
 | EXCLUDE_DOMAINS  | Excluded domains (comma-separated) | No       | `example.com,example.org`                      |
 | IN_CHINA         | Whether deployed in mainland China | No       | `true` or `false` (default: `false`)           |
+| ENABLE_IPV6_DDNS | enable IPv6 DDNS update | No | `true` or `false` (default: `false`) |
 
 ## Troubleshooting
 

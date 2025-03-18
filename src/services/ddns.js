@@ -2,6 +2,7 @@ const { createOrUpdateDns } = require('./cloudflare');
 const { getCurrentIPv4, getCurrentIPv6 } = require('../utils/ip');
 const { ddnsSessions } = require('../utils/session');
 const { saveDDNSConfig } = require('./ddns-persistence');
+const { ENABLE_IPV6_DDNS } = require('../config');
 
 // 启动DDNS服务
 function startDDNS(chatId, domain, interval = 60, telegram) {
@@ -19,7 +20,8 @@ function startDDNS(chatId, domain, interval = 60, telegram) {
     timer: null,
     updateCount: 0,
     errorCount: 0,
-    telegram: telegram // 保存telegram对象而不是bot
+    telegram: telegram, // 保存telegram对象而不是bot
+    enableIPv6: ENABLE_IPV6_DDNS
   };
 
   // 立即执行一次更新
@@ -63,7 +65,8 @@ function getAllDDNSTasks() {
     lastIPv4: session.lastIPv4,
     lastIPv6: session.lastIPv6,
     updateCount: session.updateCount,
-    errorCount: session.errorCount
+    errorCount: session.errorCount,
+    enableIPv6: session.enableIPv6
   }));
 }
 
@@ -73,10 +76,15 @@ async function updateDDNS(session) {
     // 获取当前IP
     const currentIPv4 = await getCurrentIPv4();
     let currentIPv6 = null;
-    try {
-      currentIPv6 = await getCurrentIPv6();
-    } catch (error) {
-      // IPv6可能不可用，忽略错误
+    
+    // 只有启用IPv6时才尝试获取IPv6地址
+    if (session.enableIPv6) {
+      try {
+        currentIPv6 = await getCurrentIPv6();
+        console.info(`已启用IPv6 DDNS，获取到IPv6地址: ${currentIPv6 || '无法获取'}`);
+      } catch (error) {
+        console.error('获取IPv6地址失败:', error.message);
+      }
     }
 
     const now = new Date();
@@ -125,8 +133,8 @@ async function updateDDNS(session) {
       }
     }
 
-    // 如果有IPv6且发生变化，也更新
-    if (currentIPv6 && session.lastIPv6 !== currentIPv6) {
+    // 如果启用了IPv6且有IPv6地址且发生变化，也更新
+    if (session.enableIPv6 && currentIPv6 && session.lastIPv6 !== currentIPv6) {
       try {
         const result = await createOrUpdateDns(session.domain, currentIPv6, 'AAAA', false);
         if (result.success) {

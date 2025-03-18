@@ -15,6 +15,8 @@ services:
       # - EXCLUDE_DOMAINS=example.com,example.org
       # 可选参数：是否部署在中国大陆服务器 (true/false，默认为false)
       # - IN_CHINA=false
+       # 可选参数：是否启用IPv6 DDNS更新 (true/false，默认为false)
+      # - ENABLE_IPV6_DDNS=false
 
     volumes:
       - ./src:/app/src

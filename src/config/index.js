@@ -22,7 +22,9 @@ try {
 const ALLOWED_CHAT_IDS = (process.env.ALLOWED_CHAT_IDS || '').split(',').map(id => id.trim());
 
 // 获取环境变量，判断是否部署在中国大陆
-const IN_CHINA = process.env.IN_CHINA === 'true';
+const IN_CHINA = process.env.IN_CHINA === 'false';
+
+const ENABLE_IPV6_DDNS = process.env.ENABLE_IPV6_DDNS === 'false';
 
 // 会话超时时间
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30分钟
@@ -54,5 +56,6 @@ module.exports = {
   EXCLUDE_DOMAINS,
   CACHE_TTL,
   DDNS_SAVE_INTERVAL_SECONDS,
-  IN_CHINA
+  IN_CHINA,
+  ENABLE_IPV6_DDNS
 };

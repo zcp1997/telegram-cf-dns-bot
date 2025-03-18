@@ -2,7 +2,7 @@ const { getConfiguredDomains } = require('../utils/domain');
 const { userSessions, SessionState } = require('../utils/session');
 const { ALLOWED_CHAT_IDS, CF_API_TOKEN } = require('../config');
 
-const helpMessage = '🤖 欢迎使用多域名 Cloudflare DNS 管理机器人！\n\n' +
+const helpMessage = '🤖 欢迎使用 Cloudflare DNS 管理机器人！\n\n' +
   '请选择以下操作类别：';
 
 function setupCommands(bot) {
@@ -240,11 +240,19 @@ function setupCommands(bot) {
       const lastUpdateStr = task.lastUpdate
         ? task.lastUpdate.toLocaleString()
         : '尚未更新';
+      
+      // 根据IPv6启用状态显示不同信息
+      let ipv6Info;
+      if (task.enableIPv6) {
+        ipv6Info = `IPv6: ${task.lastIPv6 || '获取中...'} (已启用)`;
+      } else {
+        ipv6Info = `IPv6: 未启用`;
+      }
 
       return `域名: ${task.domain}\n` +
         `刷新间隔: ${task.interval}秒\n` +
         `IPv4: ${task.lastIPv4 || '未知'}\n` +
-        `IPv6: ${task.lastIPv6 || '未配置'}\n` +
+        `${ipv6Info}\n` +
         `最后更新: ${lastUpdateStr}\n` +
         `更新次数: ${task.updateCount}\n` +
         `错误次数: ${task.errorCount}`;

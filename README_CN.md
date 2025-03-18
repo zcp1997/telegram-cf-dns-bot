@@ -39,16 +39,18 @@ services:
       # 允许访问的 Telegram 用户 ID（逗号分隔），第一个用户是管理员
       - ALLOWED_CHAT_IDS=123456789,987654321
       # DNS管理可选参数：排除的域名列表（逗号分隔）
-      #- EXCLUDE_DOMAINS=example.com,example.org
+      # - EXCLUDE_DOMAINS=example.com,example.org
       # DDNS管理可选参数：是否部署在中国大陆服务器（默认为false）
-      #- IN_CHINA=false
+      # - IN_CHINA=false
+      # 可选参数：是否启用IPv6 DDNS更新 (true/false，默认为false)
+      # - ENABLE_IPV6_DDNS=false
 
     volumes:
       - ./config:/app/config
 
     # ipv6配置  
-    #networks:
-      #- ipv6_network  
+    # networks:
+      # - ipv6_network  
 
 # networks:
 #   ipv6_network:
@@ -150,6 +152,7 @@ docker compose up -d
 | ALLOWED_CHAT_IDS | 允许访问的用户ID（逗号分隔） | 必填 | `123456789,987654321` |
 | EXCLUDE_DOMAINS | 排除的域名列表（逗号分隔） | 可选 | `example.com,example.org` |
 | IN_CHINA | 是否部署在中国大陆服务器 | 可选 | `true` 或 `false`（默认为`false`） |
+| ENABLE_IPV6_DDNS | 是否启用IPv6 DDNS更新 | 可选 | `true` 或 `false`（默认为`false`） |
 
 ## 故障排除
 

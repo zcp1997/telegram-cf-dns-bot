@@ -42,9 +42,9 @@ function setupCallbacks(bot) {
       '<b>DDNS功能亮点：</b>\n' +
       '• 自动检测IPv4和IPv6地址变化\n' +
       '• 支持多域名同时监控\n' +
-      '• 自定义更新频率（60秒-24小时）\n' +
+      '• 可自定义更新频率（60秒-24小时）\n' +
       '• IP变更时自动推送通知\n' +
-      '• 针对中国大陆优化的IP检测服务';
+      '• 针对中国大陆优化的动态IP检测';
 
     await ctx.editMessageText(ddnsHelpMessage, {
       parse_mode: 'HTML',
