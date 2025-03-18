@@ -284,35 +284,6 @@ function setupCommands(bot) {
     });
   });
 
-  // 删除DDNS任务命令
-  bot.command('delddns', async (ctx) => {
-    const chatId = ctx.chat.id;
-    const { getAllDDNSTasks, deleteDDNSTask } = require('../services/ddns');
-    const tasks = getAllDDNSTasks();
-
-    if (tasks.length === 0) {
-      await ctx.reply('当前没有运行中的DDNS任务。');
-      return;
-    }
-
-    // 创建域名选择按钮
-    const domainButtons = tasks.map(task => {
-      return [{ text: task.domain, callback_data: `delete_ddns_${task.domain}` }];
-    });
-
-    // 添加全部删除按钮
-    domainButtons.push([{ text: '删除所有DDNS任务', callback_data: 'delete_all_ddns' }]);
-
-    // 添加取消按钮
-    domainButtons.push([{ text: '取消操作', callback_data: 'cancel_delete_ddns' }]);
-
-    await ctx.reply('请选择要删除的DDNS任务：', {
-      reply_markup: {
-        inline_keyboard: domainButtons
-      }
-    });
-  });
-
   // 管理员命令
   bot.command('listusers', async (ctx) => {
     const chatId = ctx.chat.id.toString();
@@ -382,7 +353,6 @@ const commands = [
   { command: 'ddns', description: '设置自动DDNS' },
   { command: 'ddnsstatus', description: '查看DDNS任务状态' },
   { command: 'stopddns', description: '停止DDNS任务' },
-  { command: 'delddns', description: '删除DDNS任务' },
   { command: 'help', description: '显示帮助信息' },
   { command: 'listusers', description: '查看白名单用户列表 (仅管理员)' },
   { command: 'zonemap', description: '查看域名和Zone ID映射 (仅管理员)' }

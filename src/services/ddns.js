@@ -181,42 +181,8 @@ async function updateDDNS(session) {
   }
 }
 
-// 删除特定域名的DDNS任务
-function deleteDDNSTask(domain) {
-  const result = stopDDNS(domain);
-  if (result) {
-    // 保存配置到文件
-    saveDDNSConfig().catch(err => console.error('保存DDNS配置失败:', err));
-    return { success: true, message: `已成功删除域名 ${domain} 的DDNS任务` };
-  }
-  return { success: false, message: `未找到域名 ${domain} 的DDNS任务` };
-}
-
-// 删除所有DDNS任务
-function deleteAllDDNSTasks() {
-  const domains = Array.from(ddnsSessions.keys());
-  let count = 0;
-  
-  domains.forEach(domain => {
-    if (stopDDNS(domain)) {
-      count++;
-    }
-  });
-  
-  // 保存配置到文件
-  saveDDNSConfig().catch(err => console.error('保存DDNS配置失败:', err));
-  
-  return { 
-    success: true, 
-    count, 
-    message: `已成功删除${count}个DDNS任务` 
-  };
-}
-
 module.exports = {
   startDDNS,
   stopDDNS,
-  getAllDDNSTasks,
-  deleteDDNSTask,
-  deleteAllDDNSTasks
+  getAllDDNSTasks
 };

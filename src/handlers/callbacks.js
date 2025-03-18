@@ -40,8 +40,7 @@ function setupCallbacks(bot) {
       '<b>可用命令：</b>\n' +
       '• /ddns - 设置新的DDNS任务\n' +
       '• /ddnsstatus - 查看所有DDNS任务状态\n' +
-      '• /stopddns - 暂停指定的DDNS任务\n' +
-      '• /delddns - 删除指定的DDNS任务\n\n' +
+      '• /stopddns - 停止指定的DDNS任务\n\n' +
       '<b>DDNS功能亮点：</b>\n' +
       '• 自动检测IPv4和IPv6地址变化\n' +
       '• 支持多域名同时监控\n' +
@@ -975,36 +974,6 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await ctx.editMessageText(`已停止所有DDNS任务，共${stoppedCount}个。`);
-  });
-
-  // 处理删除DDNS任务的回调
-  bot.action(/^delete_ddns_(.+)$/, async (ctx) => {
-    const domain = ctx.match[1];
-    const { deleteDDNSTask } = require('../services/ddns');
-
-    const result = deleteDDNSTask(domain);
-    if (result.success) {
-      await ctx.answerCbQuery('删除成功');
-      await ctx.editMessageText(`✅ ${result.message}`);
-    } else {
-      await ctx.answerCbQuery('删除失败');
-      await ctx.editMessageText(`❌ ${result.message}`);
-    }
-  });
-
-  // 处理删除所有DDNS任务的回调
-  bot.action('delete_all_ddns', async (ctx) => {
-    const { deleteAllDDNSTasks } = require('../services/ddns');
-
-    const result = deleteAllDDNSTasks();
-    await ctx.answerCbQuery(`已删除${result.count}个任务`);
-    await ctx.editMessageText(`✅ ${result.message}`);
-  });
-
-  // 处理取消删除DDNS操作的回调
-  bot.action('cancel_delete_ddns', async (ctx) => {
-    await ctx.answerCbQuery('已取消');
-    await ctx.editMessageText('❌ 已取消删除DDNS任务操作');
   });
 }
 
