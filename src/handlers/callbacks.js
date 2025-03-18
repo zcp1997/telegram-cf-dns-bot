@@ -30,8 +30,6 @@ function setupCallbacks(bot) {
       '⏹️ /stopddns - 停止DDNS任务';
 
     ctx.editMessageText(dnsManagementHelp, {
-<<<<<<< Updated upstream
-=======
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
@@ -56,7 +54,6 @@ function setupCallbacks(bot) {
       '• 针对中国大陆优化的动态IP检测';
 
     await ctx.editMessageText(ddnsHelpMessage, {
->>>>>>> Stashed changes
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]

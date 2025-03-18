@@ -18,16 +18,16 @@ function setupMessageHandlers(bot) {
     session.lastUpdate = Date.now();
 
     switch (session.state) {
+      case SessionState.WAITING_SUBDOMAIN_INPUT:
+        await handleSubdomainInput(ctx, session);
+        break;
+
       case SessionState.WAITING_IP:
         await handleIpInput(ctx, session);
         break;
 
       case SessionState.WAITING_DNS_UPDATE_NEW_IP:
         await handleDnsUpdateIpInput(ctx, session);
-        break;
-
-      case SessionState.WAITING_SUBDOMAIN_INPUT:
-        await handleSubdomainInput(ctx, session);
         break;
 
       case SessionState.WAITING_SUBDOMAIN_FOR_SET:
@@ -225,6 +225,9 @@ async function handleDnsUpdateIpInput(ctx, session) {
 // 处理子域名输入
 async function handleSubdomainInput(ctx, session) {
   const prefix = ctx.message.text.trim();
+  
+  // 跟踪用户输入消息
+  trackMessage(ctx.chat.id, ctx.message.message_id, 'setdns');
 
   // 如果用户输入点号，直接查询根域名
   if (prefix === '.') {

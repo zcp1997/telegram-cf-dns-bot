@@ -244,8 +244,6 @@ function setupCommands(bot) {
       const lastUpdateStr = task.lastUpdate
         ? task.lastUpdate.toLocaleString()
         : '尚未更新';
-<<<<<<< Updated upstream
-=======
 
       // 根据IPv6启用状态显示不同信息
       let ipv6Info;
@@ -254,7 +252,6 @@ function setupCommands(bot) {
       } else {
         ipv6Info = `IPv6: 未启用`;
       }
->>>>>>> Stashed changes
 
       return `域名: ${task.domain}\n` +
         `刷新间隔: ${task.interval}秒\n` +
