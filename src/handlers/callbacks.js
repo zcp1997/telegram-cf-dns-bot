@@ -21,17 +21,42 @@ function setupCallbacks(bot) {
       '   • 查看根域名下所有记录\n\n' +
       '❌ /deldns - 删除 DNS 记录\n' +
       '   • 删除前会要求确认\n\n' +
-      '🔄 /ddns - 设置自动DDNS\n' +
-      '   • 自动检测IP变化并更新DNS\n' +
-      '   • 支持自定义刷新间隔\n\n' +
-      '📊 /ddnsstatus - 查看DDNS状态\n' +
-      '   • 显示所有DDNS任务的状态\n\n' +
-      '⏹️ /stopddns - 停止DDNS任务';
 
-    ctx.editMessageText(dnsManagementHelp, {
+      ctx.editMessageText(dnsManagementHelp, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
+        }
+      });
+  });
+
+  // 处理DDNS管理帮助回调
+  bot.action('help_ddns_management', async (ctx) => {
+    await ctx.answerCbQuery();
+
+    const ddnsHelpMessage =
+      '🔄 <b>DDNS动态域名管理</b>\n\n' +
+      '动态DNS服务允许您自动更新域名指向的IP地址，特别适合家庭宽带等动态IP环境。\n\n' +
+      '<b>可用命令：</b>\n' +
+      '• /ddns - 设置新的DDNS任务\n' +
+      '• /ddnsstatus - 查看所有DDNS任务状态\n' +
+      '• /stopddns - 暂停指定的DDNS任务\n' +
+      '• /delddns - 删除指定的DDNS任务\n\n' +
+      '<b>DDNS功能亮点：</b>\n' +
+      '• 自动检测IPv4和IPv6地址变化\n' +
+      '• 支持多域名同时监控\n' +
+      '• 自定义更新频率（60秒-24小时）\n' +
+      '• IP变更时自动推送通知\n' +
+      '• 针对中国大陆优化的IP检测服务';
+
+    const backButton = [
+      [{ text: '« 返回', callback_data: 'help_back' }]
+    ];
+
+    await ctx.editMessageText(ddnsHelpMessage, {
       parse_mode: 'HTML',
       reply_markup: {
-        inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
+        inline_keyboard: backButton
       }
     });
   });

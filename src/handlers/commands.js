@@ -10,6 +10,7 @@ function setupCommands(bot) {
   bot.command('start', (ctx) => {
     const helpButtons = [
       [{ text: '📝 DNS记录管理', callback_data: 'help_dns_management' }],
+      [{ text: '🔄 DDNS动态域名', callback_data: 'help_ddns_management' }],
       [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
       [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
     ];
@@ -24,6 +25,7 @@ function setupCommands(bot) {
   bot.command('help', (ctx) => {
     const helpButtons = [
       [{ text: '📝 DNS记录管理', callback_data: 'help_dns_management' }],
+      [{ text: '🔄 DDNS动态域名', callback_data: 'help_ddns_management' }],
       [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
       [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
     ];
@@ -142,7 +144,7 @@ function setupCommands(bot) {
       });
 
       // 添加取消按钮
-      domainButtons.push([{ text: '取消操作', callback_data: 'cancel_getalldns' }]);
+      domainButtons.push([{ text: '取消操作', callback_data: 'cancel_getdns' }]);
 
       await ctx.reply(message, {
         reply_markup: {

@@ -38,9 +38,9 @@ services:
       - CF_API_TOKEN=your_api_token_here
       # 允许访问的 Telegram 用户 ID（逗号分隔），第一个用户是管理员
       - ALLOWED_CHAT_IDS=123456789,987654321
-      # 可选参数：排除的域名列表（逗号分隔）
+      # DNS管理可选参数：排除的域名列表（逗号分隔）
       #- EXCLUDE_DOMAINS=example.com,example.org
-      # 可选参数：是否部署在中国大陆服务器（默认为false）
+      # DDNS管理可选参数：是否部署在中国大陆服务器（默认为false）
       #- IN_CHINA=false
 
     volumes:
