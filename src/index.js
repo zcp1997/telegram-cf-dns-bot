@@ -1,9 +1,10 @@
 const { Telegraf } = require('telegraf');
-const { TELEGRAM_TOKEN, ALLOWED_CHAT_IDS } = require('./config');
+const { TELEGRAM_TOKEN, ALLOWED_CHAT_IDS, DDNS_SAVE_INTERVAL_SECONDS } = require('./config');
 const { setupCommands, commands } = require('./handlers/commands');
 const { setupCallbacks } = require('./handlers/callbacks');
 const { setupMessageHandlers } = require('./handlers/messages');
 const { checkAccessWithCache } = require('./middleware/auth');
+const { restoreDDNSTasks, setupAutoSave } = require('./services/ddns-persistence');
 
 const bot = new Telegraf(TELEGRAM_TOKEN);
 
@@ -54,6 +55,16 @@ async function startBot() {
     // 设置普通用户命令菜单
     await bot.telegram.setMyCommands(commands);
     console.log('6. 已设置用户命令菜单');
+
+    // 恢复DDNS任务
+    const restoredCount = await restoreDDNSTasks(bot.telegram);
+
+    // 设置自动保存
+    setupAutoSave(DDNS_SAVE_INTERVAL_SECONDS); // 每5分钟保存一次
+
+    if (restoredCount > 0) {
+      console.log('7. 已恢复${restoredCount}个DDNS任务');
+    }
 
     console.log('=== Bot 启动和配置完成 ===');
     console.log('• 白名单用户:', ALLOWED_CHAT_IDS.join(', '));

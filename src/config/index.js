@@ -21,6 +21,9 @@ try {
 // 用户白名单配置
 const ALLOWED_CHAT_IDS = (process.env.ALLOWED_CHAT_IDS || '').split(',').map(id => id.trim());
 
+// 获取环境变量，判断是否部署在中国大陆
+const IN_CHINA = process.env.IN_CHINA === 'true';
+
 // 会话超时时间
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30分钟
 
@@ -36,6 +39,9 @@ const DNS_RECORDS_PAGE_SIZE = 5
 // 缓存有效期1小时
 const CACHE_TTL = 3600000;
 
+// DDNS保存间隔时间
+const DDNS_SAVE_INTERVAL_SECONDS = 5
+
 module.exports = {
   TELEGRAM_TOKEN,
   CF_API_TOKEN,
@@ -46,5 +52,7 @@ module.exports = {
   CLEAN_SESSION_INTERVAL,
   DNS_RECORDS_PAGE_SIZE,
   EXCLUDE_DOMAINS,
-  CACHE_TTL
+  CACHE_TTL,
+  DDNS_SAVE_INTERVAL_SECONDS,
+  IN_CHINA
 };

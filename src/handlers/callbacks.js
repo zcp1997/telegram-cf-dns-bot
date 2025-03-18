@@ -1,9 +1,10 @@
 const { userSessions, SessionState } = require('../utils/session');
 const { createOrUpdateDns, deleteDnsRecord, getDnsRecord, updateDnsRecord, deleteSingleDnsRecord } = require('../services/cloudflare');
-const { displayDnsRecordsPage, queryDomainRecords } = require('./messages');
+const { displayDnsRecordsPage, queryDomainRecords, setupDDNS } = require('./messages');
 const { getZoneIdForDomain } = require('../utils/domain');
 const { DNS_RECORDS_PAGE_SIZE } = require('../config');
 const { helpMessage } = require('./commands');
+const { stopDDNS, getAllDDNSTasks } = require('../services/ddns');
 
 function setupCallbacks(bot) {
   // 处理帮助按钮回调
@@ -19,7 +20,13 @@ function setupCallbacks(bot) {
       '🔍 /getdnsall - 查询所有 DNS 记录\n' +
       '   • 查看根域名下所有记录\n\n' +
       '❌ /deldns - 删除 DNS 记录\n' +
-      '   • 删除前会要求确认';
+      '   • 删除前会要求确认\n\n' +
+      '🔄 /ddns - 设置自动DDNS\n' +
+      '   • 自动检测IP变化并更新DNS\n' +
+      '   • 支持自定义刷新间隔\n\n' +
+      '📊 /ddnsstatus - 查看DDNS状态\n' +
+      '   • 显示所有DDNS任务的状态\n\n' +
+      '⏹️ /stopddns - 停止DDNS任务';
 
     ctx.editMessageText(dnsManagementHelp, {
       parse_mode: 'HTML',
@@ -821,6 +828,158 @@ function setupCallbacks(bot) {
       await ctx.reply(`查询DNS记录时发生错误: ${error.message}`);
       userSessions.delete(chatId);
     }
+  });
+
+  // 处理DDNS域名选择
+  bot.action(/^select_domain_ddns_(.+)$/, async (ctx) => {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+
+    if (!session || session.state !== SessionState.SELECTING_DOMAIN_FOR_DDNS) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    const rootDomain = ctx.match[1];
+    session.rootDomain = rootDomain;
+    session.state = SessionState.WAITING_SUBDOMAIN_FOR_DDNS;
+
+    await ctx.answerCbQuery();
+    await ctx.deleteMessage();
+    await ctx.reply(
+      `已选择域名: ${rootDomain}\n\n` +
+      `请输入子域名前缀（如：www），或直接发送 "." 设置根域名。\n\n` +
+      `例如：输入 "www" 将设置 www.${rootDomain}`,
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '设置根域名', callback_data: 'set_root_domain_ddns' },
+            { text: '取消操作', callback_data: 'cancel_ddns' }
+          ]]
+        }
+      }
+    );
+  });
+
+  // 处理设置根域名DDNS
+  bot.action('set_root_domain_ddns', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+
+    if (!session || session.state !== SessionState.WAITING_SUBDOMAIN_FOR_DDNS) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    // 直接使用根域名
+    session.domain = session.rootDomain;
+    session.state = SessionState.WAITING_INTERVAL_FOR_DDNS;
+
+    await ctx.answerCbQuery();
+    await ctx.deleteMessage();
+    await ctx.reply(
+      `请输入 ${session.domain} 的DDNS刷新间隔（秒）。\n或选择预设事件间隔：`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '60秒', callback_data: 'ddns_interval_60' },
+              { text: '5分钟', callback_data: 'ddns_interval_300' },
+              { text: '10分钟', callback_data: 'ddns_interval_600' }
+            ],
+            [
+              { text: '取消操作', callback_data: 'cancel_ddns' }
+            ]
+          ]
+        }
+      }
+    );
+  });
+
+  // 处理DDNS间隔选择
+  bot.action(/^ddns_interval_(\d+)$/, async (ctx) => {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+
+    if (!session || session.state !== SessionState.WAITING_INTERVAL_FOR_DDNS) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    const interval = parseInt(ctx.match[1]);
+    await setupDDNS(ctx, session, interval);
+  });
+
+  // 取消DDNS设置
+  bot.action('cancel_ddns', async (ctx) => {
+    const chatId = ctx.chat.id;
+    userSessions.delete(chatId);
+    await ctx.answerCbQuery();
+    await ctx.editMessageText('已取消DDNS设置操作。');
+  });
+
+  // 取消停止DDNS
+  bot.action('cancel_stop_ddns', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText('已取消停止DDNS操作。');
+  });
+
+  // 停止特定DDNS任务
+  bot.action(/^stop_ddns_(.+)$/, async (ctx) => {
+    const domain = ctx.match[1];
+    const result = stopDDNS(domain);
+
+    await ctx.answerCbQuery();
+    if (result) {
+      await ctx.editMessageText(`已停止 ${domain} 的DDNS任务。`);
+    } else {
+      await ctx.editMessageText(`未找到 ${domain} 的DDNS任务。`);
+    }
+  });
+
+  // 停止所有DDNS任务
+  bot.action('stop_all_ddns', async (ctx) => {
+    const tasks = getAllDDNSTasks();
+    let stoppedCount = 0;
+
+    for (const task of tasks) {
+      if (stopDDNS(task.domain)) {
+        stoppedCount++;
+      }
+    }
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(`已停止所有DDNS任务，共${stoppedCount}个。`);
+  });
+
+  // 处理删除DDNS任务的回调
+  bot.action(/^delete_ddns_(.+)$/, async (ctx) => {
+    const domain = ctx.match[1];
+    const { deleteDDNSTask } = require('../services/ddns');
+
+    const result = deleteDDNSTask(domain);
+    if (result.success) {
+      await ctx.answerCbQuery('删除成功');
+      await ctx.editMessageText(`✅ ${result.message}`);
+    } else {
+      await ctx.answerCbQuery('删除失败');
+      await ctx.editMessageText(`❌ ${result.message}`);
+    }
+  });
+
+  // 处理删除所有DDNS任务的回调
+  bot.action('delete_all_ddns', async (ctx) => {
+    const { deleteAllDDNSTasks } = require('../services/ddns');
+
+    const result = deleteAllDDNSTasks();
+    await ctx.answerCbQuery(`已删除${result.count}个任务`);
+    await ctx.editMessageText(`✅ ${result.message}`);
+  });
+
+  // 处理取消删除DDNS操作的回调
+  bot.action('cancel_delete_ddns', async (ctx) => {
+    await ctx.answerCbQuery('已取消');
+    await ctx.editMessageText('❌ 已取消删除DDNS任务操作');
   });
 }
 

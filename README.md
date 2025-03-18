@@ -1,6 +1,6 @@
 # Cloudflare DNS Manager
 
-This is an interactive Cloudflare DNS record management tool based on Telegram Bot, supporting multi-domain management for easy addition, updating, deletion, and querying of DNS records.
+A Telegram Bot-based interactive Cloudflare DNS record management tool, supporting multi-domain management for easily adding, updating, deleting, and querying DNS records.
 
 [中文文档](README_CN.md)
 
@@ -8,7 +8,8 @@ This is an interactive Cloudflare DNS record management tool based on Telegram B
 
 - 🔒 User whitelist control
 - 🌐 Multi-domain management
-- 📝 DNS record CRUD operations
+- 📝 CRUD operations for DNS records
+- 🔄 DDNS (Dynamic DNS) automatic IP updates
 - 🐳 Docker containerized deployment
 - 🤖 Telegram Bot interactive interface
 
@@ -17,8 +18,8 @@ This is an interactive Cloudflare DNS record management tool based on Telegram B
 ### Prerequisites
 
 - Docker and Docker Compose
-- Telegram Bot Token (obtain from [@BotFather](https://t.me/BotFather))
-- Cloudflare API Token (obtain from Cloudflare dashboard)
+- Telegram Bot Token (get from [@BotFather](https://t.me/BotFather))
+- Cloudflare API Token (get from Cloudflare dashboard)
 
 ## Deployment Methods
 
@@ -37,29 +38,32 @@ services:
       - TELEGRAM_TOKEN=your_telegram_token_here
       # Cloudflare API Token
       - CF_API_TOKEN=your_api_token_here
-      # Allowed Telegram user IDs (comma-separated), first user is admin
+      # Allowed Telegram User IDs (comma-separated), first user is admin
       - ALLOWED_CHAT_IDS=123456789,987654321
-      # Optional parameter: List of excluded domains (comma-separated)
+      # DNS Optional Paramter: Excluded domains list (comma-separated)
       #- EXCLUDE_DOMAINS=example.com,example.org
+      # DDNS Optional Paramter: Is the bot deployed in mainland China (default is false)
+      #- IN_CHINA=false
 ```
 
-2. Edit the `docker-compose.yml` file, filling in the necessary configuration:
+2. Edit the `docker-compose.yml` file with your configuration:
+
    - Replace `your_telegram_token_here` with your Telegram Bot Token
    - Replace `your_api_token_here` with your Cloudflare API Token
-   - Replace user IDs in `ALLOWED_CHAT_IDS` with your allowed user IDs
+   - Replace the user IDs in `ALLOWED_CHAT_IDS` with your allowed users
 
 3. Start the service:
 ```bash
 docker compose up -d
 ```
 
-1. View logs:
+4. View logs:
 ```bash
 docker compose logs -f
 ```
 
 ### Method 2: Manual Build and Deployment
-If you prefer to build the image yourself or modify the code, follow these steps:
+If you want to build the image yourself or modify the code, follow these steps:
 
 1. Clone the repository:
 ```bash
@@ -67,12 +71,14 @@ git clone https://github.com/zcp1997/telegram-cf-dns-bot.git
 cd telegram-cf-dns-bot
 ```
 
-2. Fill in the configuration information
+2. Fill in your configuration details:
+   
    - Replace `your_telegram_token_here` with your Telegram Bot Token
    - Replace `your_api_token_here` with your Cloudflare API Token
-   - Replace user IDs in `ALLOWED_CHAT_IDS` with your allowed user IDs
+   - Replace the user IDs in `ALLOWED_CHAT_IDS` with your allowed users
 
-3. Build and start using Docker Compose:
+3. Build and start with Docker Compose:
+   
 ```bash
 docker compose build
 docker compose up -d
@@ -80,7 +86,7 @@ docker compose up -d
 
 ### Updating Deployment
 
-Simply pull the latest image and restart the container:
+Pull the latest image and restart the container:
 ```bash
 docker compose pull
 docker compose up -d
@@ -90,16 +96,23 @@ docker compose up -d
 
 ### Basic Commands
 
-- `/start` - Display welcome message and instructions
-- `/help` - Display help information
-- `/domains` - List all configured domains
+- `/start` - Start the bot and display welcome message with function menu
+- `/help` - View detailed help information and usage guide
+- `/domains` - List all manageable domains
 
 ### DNS Record Management
 
-- `/setdns` - Add or update DNS records
-- `/getdns` - Query DNS records for a domain
+- `/setdns` - Add or update DNS records (supports A, AAAA, CNAME, TXT, etc.)
+- `/getdns` - Query DNS records for a specific subdomain
 - `/getdnsall` - Query all DNS records under a root domain
-- `/deldns` - Delete DNS records for a domain
+- `/deldns` - Delete specified DNS records
+
+### DDNS (Dynamic DNS) Functions
+
+- `/ddns` - Set up automatic DDNS tasks (dynamic IP address updates)
+- `/ddnsstatus` - View the status of all DDNS tasks
+- `/stopddns` - Pause specified DDNS tasks
+- `/delddns` - Delete specified DDNS tasks
 
 ### Admin Commands
 
@@ -108,40 +121,41 @@ docker compose up -d
 
 ## Configuration Details
 
-### Cloudflare API Token Permission Requirements
+### Cloudflare API Token Requirements
 
-When creating an API Token, include the following permissions:
+When creating an API Token, include these permissions:
 - Zone - DNS - Edit
 - Zone - Zone - Read
 
 ### Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| TELEGRAM_TOKEN | Telegram Bot Token | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
-| CF_API_TOKEN | Cloudflare API Token | `your-api-token-here` |
-| ALLOWED_CHAT_IDS | Allowed user IDs | `123456789,987654321` |
-| EXCLUDE_DOMAINS | Excude domains | `example.com,example.org` |
+| Variable | Description | Required | Example |
+|----------|-------------|----------|---------|
+| TELEGRAM_TOKEN | Telegram Bot Token | Yes | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
+| CF_API_TOKEN | Cloudflare API Token | Yes | `your-api-token-here` |
+| ALLOWED_CHAT_IDS | Allowed user IDs (comma-separated) | Yes | `123456789,987654321` |
+| EXCLUDE_DOMAINS | Excluded domains (comma-separated) | No | `example.com,example.org` |
+| IN_CHINA | Whether deployed in mainland China | No | `true` or `false` (default: `false`) |
 
 ## Troubleshooting
 
-1. If the Bot is unresponsive:
+1. If the bot doesn't respond:
    - Check if `TELEGRAM_TOKEN` is correct
    - View container logs with `docker compose logs -f`
 
-2. If unable to manage DNS:
-   - Confirm `CF_API_TOKEN` has correct permissions
+2. If you can't manage DNS:
+   - Confirm `CF_API_TOKEN` has the correct permissions
 
-3. If unable to access the Bot:
+3. If you can't access the bot:
    - Confirm your Telegram user ID is in `ALLOWED_CHAT_IDS`
-   - You can get your user ID via [@userinfobot](https://t.me/userinfobot)
+   - You can get your ID via [@userinfobot](https://t.me/userinfobot)
 
 ### Viewing Logs
 ```bash
 # View real-time logs
 docker compose logs -f
 
-# View last 100 lines of logs
+# View last 100 log lines
 docker compose logs --tail=100
 ```
 
@@ -161,7 +175,7 @@ docker compose ps
 
 1. Regularly rotate your Cloudflare API Token
 2. Strictly control whitelist user access
-3. Regularly check Bot access logs
+3. Regularly check bot access logs
 
 ## License
 

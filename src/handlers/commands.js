@@ -189,6 +189,128 @@ function setupCommands(bot) {
     }
   });
 
+  // 添加DDNS命令
+  bot.command('ddns', async (ctx) => {
+    const chatId = ctx.chat.id;
+    userSessions.set(chatId, {
+      state: SessionState.SELECTING_DOMAIN_FOR_DDNS,
+      lastUpdate: Date.now()
+    });
+
+    try {
+      const domains = await getConfiguredDomains();
+      if (domains.length === 0) {
+        ctx.reply('未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。');
+        return;
+      }
+
+      let message = '请选择要设置DDNS的域名：';
+
+      // 创建域名选择按钮
+      const domainButtons = domains.map(domain => {
+        return [{ text: domain, callback_data: `select_domain_ddns_${domain}` }];
+      });
+
+      // 添加取消按钮
+      domainButtons.push([{ text: '取消操作', callback_data: 'cancel_ddns' }]);
+
+      await ctx.reply(message, {
+        reply_markup: {
+          inline_keyboard: domainButtons
+        }
+      });
+    } catch (error) {
+      ctx.reply(`获取域名列表失败: ${error.message}`);
+    }
+  });
+
+  // 查看DDNS状态命令
+  bot.command('ddnsstatus', async (ctx) => {
+    const { getAllDDNSTasks } = require('../services/ddns');
+    const tasks = getAllDDNSTasks();
+
+    if (tasks.length === 0) {
+      await ctx.reply('当前没有运行中的DDNS任务。');
+      return;
+    }
+
+    const tasksInfo = tasks.map(task => {
+      const lastUpdateStr = task.lastUpdate
+        ? task.lastUpdate.toLocaleString()
+        : '尚未更新';
+
+      return `域名: ${task.domain}\n` +
+        `刷新间隔: ${task.interval}秒\n` +
+        `IPv4: ${task.lastIPv4 || '未知'}\n` +
+        `IPv6: ${task.lastIPv6 || '未配置'}\n` +
+        `最后更新: ${lastUpdateStr}\n` +
+        `更新次数: ${task.updateCount}\n` +
+        `错误次数: ${task.errorCount}`;
+    }).join('\n\n');
+
+    await ctx.reply(
+      `🔄 DDNS任务状态 (共${tasks.length}个):\n\n${tasksInfo}`
+    );
+  });
+
+  // 停止DDNS命令
+  bot.command('stopddns', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const { getAllDDNSTasks, stopDDNS } = require('../services/ddns');
+    const tasks = getAllDDNSTasks();
+
+    if (tasks.length === 0) {
+      await ctx.reply('当前没有运行中的DDNS任务。');
+      return;
+    }
+
+    // 创建域名选择按钮
+    const domainButtons = tasks.map(task => {
+      return [{ text: task.domain, callback_data: `stop_ddns_${task.domain}` }];
+    });
+
+    // 添加全部停止按钮
+    domainButtons.push([{ text: '停止所有DDNS任务', callback_data: 'stop_all_ddns' }]);
+
+    // 添加取消按钮
+    domainButtons.push([{ text: '取消操作', callback_data: 'cancel_stop_ddns' }]);
+
+    await ctx.reply('请选择要停止的DDNS任务：', {
+      reply_markup: {
+        inline_keyboard: domainButtons
+      }
+    });
+  });
+
+  // 删除DDNS任务命令
+  bot.command('delddns', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const { getAllDDNSTasks, deleteDDNSTask } = require('../services/ddns');
+    const tasks = getAllDDNSTasks();
+
+    if (tasks.length === 0) {
+      await ctx.reply('当前没有运行中的DDNS任务。');
+      return;
+    }
+
+    // 创建域名选择按钮
+    const domainButtons = tasks.map(task => {
+      return [{ text: task.domain, callback_data: `delete_ddns_${task.domain}` }];
+    });
+
+    // 添加全部删除按钮
+    domainButtons.push([{ text: '删除所有DDNS任务', callback_data: 'delete_all_ddns' }]);
+
+    // 添加取消按钮
+    domainButtons.push([{ text: '取消操作', callback_data: 'cancel_delete_ddns' }]);
+
+    await ctx.reply('请选择要删除的DDNS任务：', {
+      reply_markup: {
+        inline_keyboard: domainButtons
+      }
+    });
+  });
+
   // 管理员命令
   bot.command('listusers', async (ctx) => {
     const chatId = ctx.chat.id.toString();
@@ -255,6 +377,10 @@ const commands = [
   { command: 'getdnsall', description: '查询所有DNS记录' },
   { command: 'deldns', description: '删除DNS记录' },
   { command: 'domains', description: '查看所有已配置的域名' },
+  { command: 'ddns', description: '设置自动DDNS' },
+  { command: 'ddnsstatus', description: '查看DDNS任务状态' },
+  { command: 'stopddns', description: '停止DDNS任务' },
+  { command: 'delddns', description: '删除DDNS任务' },
   { command: 'help', description: '显示帮助信息' },
   { command: 'listusers', description: '查看白名单用户列表 (仅管理员)' },
   { command: 'zonemap', description: '查看域名和Zone ID映射 (仅管理员)' }

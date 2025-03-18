@@ -35,6 +35,13 @@ function setupMessageHandlers(bot) {
       case SessionState.WAITING_SUBDOMAIN_FOR_DELETE:
         await handleSubdomainForDelete(ctx, session);
         break;
+        
+      case SessionState.WAITING_SUBDOMAIN_FOR_DDNS:
+        await handleSubdomainForDDNS(ctx, session);
+        break;
+      case SessionState.WAITING_INTERVAL_FOR_DDNS:
+        await handleIntervalForDDNS(ctx, session);
+        break;
     }
   });
 }
@@ -384,4 +391,85 @@ async function handleSubdomainForDelete(ctx, session) {
   }
 }
 
-module.exports = { setupMessageHandlers, displayDnsRecordsPage, queryDomainRecords };
+// 处理DDNS的子域名输入
+async function handleSubdomainForDDNS(ctx, session) {
+  const prefix = ctx.message.text.trim();
+  const fullDomain = prefix === '.' ? session.rootDomain : `${prefix}.${session.rootDomain}`;
+
+  session.domain = fullDomain;
+  session.state = SessionState.WAITING_INTERVAL_FOR_DDNS;
+
+  await ctx.reply(
+    `请输入 ${session.domain} 的DDNS刷新间隔（秒）。\n或选择预设事件间隔：`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '60秒', callback_data: 'ddns_interval_60' },
+            { text: '5分钟', callback_data: 'ddns_interval_300' },
+            { text: '10分钟', callback_data: 'ddns_interval_600' }
+          ],
+          [
+            { text: '取消操作', callback_data: 'cancel_ddns' }
+          ]
+        ]
+      }
+    }
+  );
+}
+
+// 处理DDNS的间隔输入
+async function handleIntervalForDDNS(ctx, session) {
+  const intervalText = ctx.message.text.trim();
+  let interval = 60; // 默认60秒
+  
+  if (intervalText !== '') {
+    const parsedInterval = parseInt(intervalText);
+    if (isNaN(parsedInterval) || parsedInterval < 10) {
+      await ctx.reply('请输入有效的间隔时间，最小为10秒。');
+      return;
+    }
+    interval = parsedInterval;
+  }
+  
+  await setupDDNS(ctx, session, interval);
+}
+
+// 设置DDNS的通用函数
+async function setupDDNS(ctx, session, interval) {
+  try {
+    const { getCurrentIPv4, getCurrentIPv6 } = require('../utils/ip');
+    const { startDDNS } = require('../services/ddns');
+    
+    // 获取当前IP
+    const currentIP = await getCurrentIPv4();
+    let currentIPv6 = null;
+    try {
+      currentIPv6 = await getCurrentIPv6();
+    } catch (error) {
+      // IPv6可能不可用，忽略错误
+    }
+    
+    // 启动DDNS服务，传递telegram对象而不是bot
+    const ddnsSession = startDDNS(ctx.chat.id, session.domain, interval, ctx.telegram);
+    
+    await ctx.reply(
+      `✅ DDNS已设置成功！\n\n` +
+      `域名: ${session.domain}\n` +
+      `当前IPv4: ${currentIP}\n` +
+      `当前IPv6: ${currentIPv6}\n` +
+      `刷新间隔: ${interval}秒\n\n` +
+      `系统将自动检测IP变化并更新DNS记录。\n` +
+      `使用 /ddnsstatus 查看DDNS状态\n` +
+      `使用 /stopddns 停止DDNS任务`
+    );
+    
+    // 清除会话
+    userSessions.delete(ctx.chat.id);
+  } catch (error) {
+    await ctx.reply(`设置DDNS失败: ${error.message}`);
+    userSessions.delete(ctx.chat.id);
+  }
+}
+
+module.exports = { setupMessageHandlers, displayDnsRecordsPage, queryDomainRecords, setupDDNS };

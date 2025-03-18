@@ -7,6 +7,7 @@
 - 🔒 用户白名单控制
 - 🌐 支持多域名管理
 - 📝 DNS 记录的增删改查
+- 🔄 支持DDNS自动动态域名解析
 - 🐳 Docker 容器化部署
 - 🤖 Telegram Bot 交互界面
 
@@ -39,6 +40,8 @@ services:
       - ALLOWED_CHAT_IDS=123456789,987654321
       # 可选参数：排除的域名列表（逗号分隔）
       #- EXCLUDE_DOMAINS=example.com,example.org
+      # 可选参数：是否部署在中国大陆服务器（默认为false）
+      #- IN_CHINA=false
 
 ```
 
@@ -92,21 +95,28 @@ docker compose up -d
 
 ### 基础命令
 
-- `/start` - 显示欢迎信息和使用说明
-- `/help` - 显示帮助信息
-- `/domains` - 列出所有已配置的域名
+- `/start` - 启动机器人，显示欢迎信息和功能菜单
+- `/help` - 查看详细的帮助信息和使用指南
+- `/domains` - 列出所有可管理的域名列表
 
 ### DNS 记录管理
 
-- `/setdns` - 添加或更新 DNS 记录
-- `/getdns` - 查询域名的 DNS 记录
-- `/getdnsall` - 查询根域名下所有子域名的 DNS 记录
-- `/deldns` - 删除域名的 DNS 记录
+- `/setdns` - 添加或更新DNS记录（支持A、AAAA、CNAME、TXT等记录类型）
+- `/getdns` - 查询特定子域名的DNS记录
+- `/getdnsall` - 查询根域名下所有DNS记录
+- `/deldns` - 删除指定的DNS记录
+
+### DDNS 动态域名功能
+
+- `/ddns` - 设置自动DDNS任务（动态更新域名IP地址）
+- `/ddnsstatus` - 查看所有DDNS任务的运行状态
+- `/stopddns` - 暂停指定的DDNS任务
+- `/delddns` - 删除指定的DDNS任务
 
 ### 管理员命令
 
 - `/listusers` - 显示当前白名单用户列表（仅管理员可用）
-- `/zonemap` - 显示域名和 Zone ID 的映射关系（仅管理员可用）
+- `/zonemap` - 显示域名和Zone ID的映射关系（仅管理员可用）
 
 ## 配置说明
 
@@ -118,12 +128,13 @@ docker compose up -d
 
 ### 环境变量说明
 
-| 变量名 | 说明 | 示例 |
-|--------|------|------|
-| TELEGRAM_TOKEN | Telegram Bot Token | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
-| CF_API_TOKEN | Cloudflare API Token | `your-api-token-here` |
-| ALLOWED_CHAT_IDS | 允许访问的用户 ID | `123456789,987654321` |
-| EXCLUDE_DOMAINS | 排除的域名列表（逗号分隔） | `example.com,example.org` |
+| 变量名 | 说明 | 是否必填 | 示例 |
+|--------|------|---------|------|
+| TELEGRAM_TOKEN | Telegram Bot Token | 必填 | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
+| CF_API_TOKEN | Cloudflare API Token | 必填 | `your-api-token-here` |
+| ALLOWED_CHAT_IDS | 允许访问的用户ID（逗号分隔） | 必填 | `123456789,987654321` |
+| EXCLUDE_DOMAINS | 排除的域名列表（逗号分隔） | 可选 | `example.com,example.org` |
+| IN_CHINA | 是否部署在中国大陆服务器 | 可选 | `true` 或 `false`（默认为`false`） |
 
 ## 故障排除
 

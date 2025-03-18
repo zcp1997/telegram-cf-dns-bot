@@ -21,7 +21,13 @@ const SessionState = {
   VIEWING_DNS_RECORDS: 'VIEWING_DNS_RECORDS',
   WAITING_NEW_PROXY: 'WAITING_NEW_PROXY',
   SELECTING_DOMAIN_FOR_QUERY: 'SELECTING_DOMAIN_FOR_QUERY',
-  WAITING_SUBDOMAIN_INPUT: 'WAITING_SUBDOMAIN_INPUT'
+  WAITING_SUBDOMAIN_INPUT: 'WAITING_SUBDOMAIN_INPUT',
+
+  // command ddns
+  SELECTING_DOMAIN_FOR_DDNS: 'SELECTING_DOMAIN_FOR_DDNS',
+  WAITING_SUBDOMAIN_FOR_DDNS: 'WAITING_SUBDOMAIN_FOR_DDNS',
+  WAITING_INTERVAL_FOR_DDNS: 'WAITING_INTERVAL_FOR_DDNS',
+  DDNS_RUNNING: 'DDNS_RUNNING'
 };
 
 function cleanupSessions() {
@@ -36,8 +42,12 @@ function cleanupSessions() {
 // 启动定期清理
 setInterval(cleanupSessions, CLEAN_SESSION_INTERVAL);
 
+// 添加DDNS会话存储
+const ddnsSessions = new Map();
+
 module.exports = {
   userSessions,
   SessionState,
-  cleanupSessions
+  cleanupSessions,
+  ddnsSessions,
 };

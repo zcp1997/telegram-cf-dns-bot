@@ -1,0 +1,222 @@
+const { createOrUpdateDns } = require('./cloudflare');
+const { getCurrentIPv4, getCurrentIPv6 } = require('../utils/ip');
+const { ddnsSessions } = require('../utils/session');
+const { saveDDNSConfig } = require('./ddns-persistence');
+
+// 启动DDNS服务
+function startDDNS(chatId, domain, interval = 60, telegram) {
+  // 如果已存在相同域名的DDNS任务，先停止
+  stopDDNS(domain);
+
+  // 初始化DDNS会话
+  const ddnsSession = {
+    chatId,
+    domain,
+    interval,
+    lastIPv4: null,
+    lastIPv6: null,
+    lastUpdate: null,
+    timer: null,
+    updateCount: 0,
+    errorCount: 0,
+    telegram: telegram // 保存telegram对象而不是bot
+  };
+
+  // 立即执行一次更新
+  updateDDNS(ddnsSession);
+
+  // 设置定时器
+  ddnsSession.timer = setInterval(() => {
+    updateDDNS(ddnsSession);
+  }, interval * 1000);
+
+  // 保存会话
+  ddnsSessions.set(domain, ddnsSession);
+  
+  // 保存配置到文件
+  saveDDNSConfig().catch(err => console.error('保存DDNS配置失败:', err));
+
+  return ddnsSession;
+}
+
+// 停止DDNS服务
+function stopDDNS(domain) {
+  const session = ddnsSessions.get(domain);
+  if (session) {
+    clearInterval(session.timer);
+    ddnsSessions.delete(domain);
+    
+    // 保存配置到文件
+    saveDDNSConfig().catch(err => console.error('保存DDNS配置失败:', err));
+    
+    return true;
+  }
+  return false;
+}
+
+// 获取所有DDNS任务
+function getAllDDNSTasks() {
+  return Array.from(ddnsSessions.entries()).map(([domain, session]) => ({
+    domain,
+    interval: session.interval,
+    lastUpdate: session.lastUpdate,
+    lastIPv4: session.lastIPv4,
+    lastIPv6: session.lastIPv6,
+    updateCount: session.updateCount,
+    errorCount: session.errorCount
+  }));
+}
+
+// 更新DDNS记录
+async function updateDDNS(session) {
+  try {
+    // 获取当前IP
+    const currentIPv4 = await getCurrentIPv4();
+    let currentIPv6 = null;
+    try {
+      currentIPv6 = await getCurrentIPv6();
+    } catch (error) {
+      // IPv6可能不可用，忽略错误
+    }
+
+    const now = new Date();
+    let updated = false;
+
+    // 检查IPv4是否变化
+    if (session.lastIPv4 !== currentIPv4) {
+      try {
+        const result = await createOrUpdateDns(session.domain, currentIPv4, 'A', false);
+        if (result.success) {
+          session.lastIPv4 = currentIPv4;
+          updated = true;
+          session.updateCount++;
+
+          // 通知用户
+          if (session.telegram) {
+            try {
+              session.telegram.sendMessage(
+                session.chatId,
+                `✅ DDNS更新成功: ${session.domain}\n` +
+                `IPv4: ${currentIPv4}\n` +
+                `时间: ${now.toLocaleString()}`
+              );
+            } catch (notifyError) {
+              console.error('发送通知失败:', notifyError);
+            }
+          }
+        }
+      } catch (error) {
+        session.errorCount++;
+        console.error(`DDNS更新失败 (${session.domain})`, error);
+
+        // 通知用户
+        if (session.telegram) {
+          try {
+            session.telegram.sendMessage(
+              session.chatId,
+              `❌ DDNS更新失败: ${session.domain}\n` +
+              `错误: ${error.message}\n` +
+              `时间: ${now.toLocaleString()}`
+            );
+          } catch (notifyError) {
+            console.error('发送通知失败:', notifyError);
+          }
+        }
+      }
+    }
+
+    // 如果有IPv6且发生变化，也更新
+    if (currentIPv6 && session.lastIPv6 !== currentIPv6) {
+      try {
+        const result = await createOrUpdateDns(session.domain, currentIPv6, 'AAAA', false);
+        if (result.success) {
+          session.lastIPv6 = currentIPv6;
+          updated = true;
+          session.updateCount++;
+
+          // 通知用户
+          if (session.telegram) {
+            try {
+              session.telegram.sendMessage(
+                session.chatId,
+                `✅ DDNS更新成功: ${session.domain}\n` +
+                `IPv6: ${currentIPv6}\n` +
+                `时间: ${now.toLocaleString()}`
+              );
+            } catch (notifyError) {
+              console.error('发送通知失败:', notifyError);
+            }
+          }
+        }
+      } catch (error) {
+        session.errorCount++;
+        console.error(`DDNS IPv6更新失败 (${session.domain})`, error);
+      }
+    }
+
+    // 更新最后更新时间
+    if (updated) {
+      session.lastUpdate = now;
+      
+      // 保存配置到文件
+      saveDDNSConfig().catch(err => console.error('保存DDNS配置失败:', err));
+    }
+  } catch (error) {
+    session.errorCount++;
+    console.error(`DDNS更新过程中发生错误 (${session.domain})`, error);
+
+    // 通知用户
+    if (session.telegram) {
+      try {
+        session.telegram.sendMessage(
+          session.chatId,
+          `❌ DDNS更新失败: ${session.domain}\n` +
+          `错误: ${error.message}\n` +
+          `时间: ${new Date().toLocaleString()}`
+        );
+      } catch (notifyError) {
+        console.error('发送通知失败:', notifyError);
+      }
+    }
+  }
+}
+
+// 删除特定域名的DDNS任务
+function deleteDDNSTask(domain) {
+  const result = stopDDNS(domain);
+  if (result) {
+    // 保存配置到文件
+    saveDDNSConfig().catch(err => console.error('保存DDNS配置失败:', err));
+    return { success: true, message: `已成功删除域名 ${domain} 的DDNS任务` };
+  }
+  return { success: false, message: `未找到域名 ${domain} 的DDNS任务` };
+}
+
+// 删除所有DDNS任务
+function deleteAllDDNSTasks() {
+  const domains = Array.from(ddnsSessions.keys());
+  let count = 0;
+  
+  domains.forEach(domain => {
+    if (stopDDNS(domain)) {
+      count++;
+    }
+  });
+  
+  // 保存配置到文件
+  saveDDNSConfig().catch(err => console.error('保存DDNS配置失败:', err));
+  
+  return { 
+    success: true, 
+    count, 
+    message: `已成功删除${count}个DDNS任务` 
+  };
+}
+
+module.exports = {
+  startDDNS,
+  stopDDNS,
+  getAllDDNSTasks,
+  deleteDDNSTask,
+  deleteAllDDNSTasks
+};
