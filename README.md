@@ -44,6 +44,22 @@ services:
       #- EXCLUDE_DOMAINS=example.com,example.org
       # DDNS Optional Paramter: Is the bot deployed in mainland China (default is false)
       #- IN_CHINA=false
+
+    volumes:
+      - ./config:/app/config   
+
+    # ipv6 configuration
+    #networks:
+      #- ipv6_network  
+
+# networks:
+#   ipv6_network:
+#     driver: bridge
+#     enable_ipv6: true
+#     ipam:
+#       config:
+#         - subnet: 2001:db8:2::/64
+#           gateway: 2001:db8:2::1
 ```
 
 2. Edit the `docker-compose.yml` file with your configuration:
@@ -129,13 +145,13 @@ When creating an API Token, include these permissions:
 
 ### Environment Variables
 
-| Variable | Description | Required | Example |
-|----------|-------------|----------|---------|
-| TELEGRAM_TOKEN | Telegram Bot Token | Yes | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
-| CF_API_TOKEN | Cloudflare API Token | Yes | `your-api-token-here` |
-| ALLOWED_CHAT_IDS | Allowed user IDs (comma-separated) | Yes | `123456789,987654321` |
-| EXCLUDE_DOMAINS | Excluded domains (comma-separated) | No | `example.com,example.org` |
-| IN_CHINA | Whether deployed in mainland China | No | `true` or `false` (default: `false`) |
+| Variable         | Description                        | Required | Example                                        |
+| ---------------- | ---------------------------------- | -------- | ---------------------------------------------- |
+| TELEGRAM_TOKEN   | Telegram Bot Token                 | Yes      | `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw` |
+| CF_API_TOKEN     | Cloudflare API Token               | Yes      | `your-api-token-here`                          |
+| ALLOWED_CHAT_IDS | Allowed user IDs (comma-separated) | Yes      | `123456789,987654321`                          |
+| EXCLUDE_DOMAINS  | Excluded domains (comma-separated) | No       | `example.com,example.org`                      |
+| IN_CHINA         | Whether deployed in mainland China | No       | `true` or `false` (default: `false`)           |
 
 ## Troubleshooting
 

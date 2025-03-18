@@ -43,6 +43,21 @@ services:
       # 可选参数：是否部署在中国大陆服务器（默认为false）
       #- IN_CHINA=false
 
+    volumes:
+      - ./config:/app/config
+
+    # ipv6配置  
+    #networks:
+      #- ipv6_network  
+
+# networks:
+#   ipv6_network:
+#     driver: bridge
+#     enable_ipv6: true
+#     ipam:
+#       config:
+#         - subnet: 2001:db8:2::/64
+#           gateway: 2001:db8:2::1
 ```
 
 2. 编辑 `docker-compose.yml` 文件，填入必要的配置信息：

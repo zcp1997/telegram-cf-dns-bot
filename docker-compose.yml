@@ -19,7 +19,9 @@ services:
     volumes:
       - ./src:/app/src
       - ./config:/app/config
-
+    networks:
+      - ipv6_network  
+      
 networks:
   ipv6_network:
     driver: bridge
