@@ -32,8 +32,6 @@ function setupCallbacks(bot) {
 
   // 处理DDNS管理帮助回调
   bot.action('help_ddns_management', async (ctx) => {
-    await ctx.answerCbQuery();
-
     const ddnsHelpMessage =
       '🔄 <b>DDNS动态域名管理</b>\n\n' +
       '动态DNS服务允许您自动更新域名指向的IP地址，特别适合家庭宽带等动态IP环境。\n\n' +
@@ -48,14 +46,10 @@ function setupCallbacks(bot) {
       '• IP变更时自动推送通知\n' +
       '• 针对中国大陆优化的IP检测服务';
 
-    const backButton = [
-      [{ text: '« 返回', callback_data: 'help_back' }]
-    ];
-
     await ctx.editMessageText(ddnsHelpMessage, {
       parse_mode: 'HTML',
       reply_markup: {
-        inline_keyboard: backButton
+        inline_keyboard: [[{ text: '« 返回', callback_data: 'help_back' }]]
       }
     });
   });
@@ -94,6 +88,7 @@ function setupCallbacks(bot) {
   bot.action('help_back', (ctx) => {
     const helpButtons = [
       [{ text: '📝 DNS记录管理', callback_data: 'help_dns_management' }],
+      [{ text: '🔄 DDNS动态域名', callback_data: 'help_ddns_management' }],
       [{ text: '📊 系统信息', callback_data: 'help_system_info' }],
       [{ text: '❓ 帮助信息', callback_data: 'help_general' }]
     ];
@@ -104,6 +99,7 @@ function setupCallbacks(bot) {
       }
     });
   });
+
   // 取消操作的回调
   bot.action('cancel_setdns', (ctx) => {
     const chatId = ctx.chat.id;
