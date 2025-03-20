@@ -36,10 +36,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
           body: |
-            # Telegram Cloudflare DNS Bot ${{ github.ref_name }}
+            # Telegram Cloudflare DNS Bot ${{ steps.get_version.outputs.VERSION }}
             
             ## 更新日志
             
@@ -69,9 +69,3 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-
-      - name: Send notification to Bark
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ secrets.BARK_URL }}/${{ github.repository }}/Release/${{ github.ref_name }}?icon=https://github.githubassets.com/favicons/favicon.png
-          method: 'GET' 
