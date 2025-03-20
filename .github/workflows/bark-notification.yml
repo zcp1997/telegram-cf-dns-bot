@@ -1,0 +1,67 @@
+name: Bark iOS Notification
+
+on:
+  # 当有新的PR被合并到主分支时触发
+  pull_request:
+    types: [closed]
+    branches: [main]
+  
+  # 当主分支有新的提交时触发
+  push:
+    branches: [main]
+  
+  # 当创建新的Release时触发
+  release:
+    types: [published]
+  
+  # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      title:
+        description: '通知标题'
+        required: true
+        default: '手动触发的通知'
+      message:
+        description: '通知内容'
+        required: true
+        default: '这是一条手动触发的Bark通知'
+
+jobs:
+  send-notification:
+    name: Send notification to iOS
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set notification content for PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+        run: |
+          echo "TITLE=PR已合并" >> $GITHUB_ENV
+          echo "MESSAGE=PR #${{ github.event.pull_request.number }} [${{ github.event.pull_request.title }}] 已合并到主分支" >> $GITHUB_ENV
+          
+      - name: Set notification content for Push
+        if: github.event_name == 'push'
+        run: |
+          echo "TITLE=新提交" >> $GITHUB_ENV
+          COMMIT_MSG=$(git log -1 --pretty=format:%s)
+          echo "MESSAGE=主分支有新的提交: $COMMIT_MSG" >> $GITHUB_ENV
+          
+      - name: Set notification content for Release
+        if: github.event_name == 'release'
+        run: |
+          echo "TITLE=新版本发布" >> $GITHUB_ENV
+          echo "MESSAGE=版本 ${{ github.event.release.tag_name }} 已发布" >> $GITHUB_ENV
+          
+      - name: Set notification content for manual trigger
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "TITLE=${{ github.event.inputs.title }}" >> $GITHUB_ENV
+          echo "MESSAGE=${{ github.event.inputs.message }}" >> $GITHUB_ENV
+      
+      - name: Send notification to Bark
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.BARK_URL }}/${{ env.TITLE }}/${{ env.MESSAGE }}?icon=https://github.githubassets.com/favicons/favicon.png&group=TelegramCFDNSBot
+          method: 'GET' 

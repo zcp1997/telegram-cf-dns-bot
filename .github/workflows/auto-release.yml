@@ -1,0 +1,77 @@
+name: Auto Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送符合 v* 格式的标签时触发，例如 v1.0.0
+
+jobs:
+  build:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # 获取完整的历史记录，用于生成更新日志
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            # Telegram Cloudflare DNS Bot ${{ github.ref_name }}
+            
+            ## 更新日志
+            
+            ${{ steps.build_changelog.outputs.changelog }}
+            
+            ## 快速部署
+            
+            ```bash
+            # 使用 Docker 部署
+            docker pull ghcr.io/zcp1997/telegram-cf-dns-bot:${{ steps.get_version.outputs.VERSION }}
+            
+            # 使用 docker-compose 部署
+            version: '3'
+            services:
+              tg-cf-dns-bot:
+                image: ghcr.io/zcp1997/telegram-cf-dns-bot:${{ steps.get_version.outputs.VERSION }}
+                restart: unless-stopped
+                environment:
+                  - TELEGRAM_TOKEN=your_token_here
+                  - CF_API_TOKEN=your_token_here
+                  - ALLOWED_CHAT_IDS=your_chat_id_here
+             
+                volumes:
+                  - ./config:/app/config
+                  - ./logs:/app/logs      
+            ```
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+      - name: Send notification to Bark
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.BARK_URL }}/${{ github.repository }}/Release/${{ github.ref_name }}?icon=https://github.githubassets.com/favicons/favicon.png
+          method: 'GET' 
