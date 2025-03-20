@@ -10,7 +10,8 @@
       "axios": "^1.6.0",
       "telegraf": "^4.15.0",
       "dotenv": "^16.3.1",
-      "net": "^1.0.2"
+      "net": "^1.0.2",
+      "moment": "^2.29.4"
     },
     "type": "commonjs",
     "repository": {

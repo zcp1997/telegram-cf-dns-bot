@@ -270,8 +270,8 @@ function setupCallbacks(bot) {
     await ctx.editMessageText(`正在删除 ${record.name} 的DNS记录...`);
 
     try {
-      // 调用删除单条记录的API
-      await deleteSingleDnsRecord(record.zone_id, record.id);
+      // 修改：传递完整的记录信息作为第三个参数
+      await deleteSingleDnsRecord(record.zone_id, record.id, record);
       await ctx.reply(`DNS记录已成功删除: ${record.name}`);
       await deleteGetDnsProcessMessages(ctx);
     } catch (error) {
@@ -345,14 +345,15 @@ function setupCallbacks(bot) {
 
       console.log(`更新记录信息: ${JSON.stringify(record)}`);
 
-      // 调用更新记录的API
+      // 修改：传递原始记录作为最后一个参数
       await updateDnsRecord(
         record.zone_id,
         record.id,
         record.name,
         session.newIpAddress,
         record.type,
-        true
+        true,
+        record // 传递完整的原始记录
       );
       await ctx.reply(`DNS记录已成功更新: ${record.name}`);
       deleteGetDnsProcessMessages(ctx);
@@ -393,14 +394,15 @@ function setupCallbacks(bot) {
 
       console.log(`更新记录信息: ${JSON.stringify(record)}`);
 
-      // 调用更新记录的API
+      // 修改：传递原始记录作为最后一个参数
       await updateDnsRecord(
         record.zone_id,
         record.id,
         record.name,
         session.newIpAddress,
         record.type,
-        false
+        false,
+        record // 传递完整的原始记录
       );
       await ctx.reply(`DNS记录已成功更新: ${record.name}`);
       deleteGetDnsProcessMessages(ctx);

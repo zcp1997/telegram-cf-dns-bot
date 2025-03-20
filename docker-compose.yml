@@ -19,6 +19,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./config:/app/config
+      - ./logs:/app/logs 
     networks:
       - ipv6_network  
       

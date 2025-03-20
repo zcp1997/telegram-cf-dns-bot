@@ -14,7 +14,9 @@ function setupCallbacks(bot) {
       '🔍 /getdnsall - 查询所有 DNS 记录\n' +
       '   • 查看根域名下所有记录\n\n' +
       '❌ /deldns - 删除 DNS 记录\n' +
-      '   • 删除前会要求确认\n\n';
+      '   • 删除前会要求确认\n\n' +
+      '📝 /dnschangelogs - 查看 DNS 变更日志\n' +
+      '   • 查看所有DNS变更日志\n\n';
 
     ctx.editMessageText(dnsManagementHelp, {
       parse_mode: 'HTML',

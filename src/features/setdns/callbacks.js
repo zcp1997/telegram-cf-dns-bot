@@ -45,7 +45,7 @@ function setupCallbacks(bot) {
       await ctx.reply(result.message);
 
       // 然后删除之前的所有消息
-      await deleteProcessMessages(ctx.telegram, chatId, 'setdns', ctx.callbackQuery.message.message_id);
+      await deleteSetDnsProcessMessages(ctx, ctx.callbackQuery.message.message_id);
     } catch (error) {
       await ctx.reply(`处理过程中发生错误: ${error.message}`);
     }
@@ -75,7 +75,7 @@ function setupCallbacks(bot) {
       );
       await ctx.reply(result.message);
 
-      await deleteSetDnsProcessMessages(ctx);
+      await deleteSetDnsProcessMessages(ctx, ctx.callbackQuery.message.message_id);
     } catch (error) {
       await ctx.reply(`处理过程中发生错误: ${error.message}`);
     }

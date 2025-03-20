@@ -18,11 +18,11 @@ const checkAccess = async (ctx, next) => {
 const checkAccessWithCache = async (ctx, next) => {
   const now = Date.now();
   const chatId = ctx.chat.id.toString();
-  
+
   if (now - lastCheckTime > CHECK_INTERVAL) {
     const cfValidation = await validateCloudflareConfig();
     if (!cfValidation.success) {
-      console.error(`定期配置检查失败: ${cfValidation.message}`);
+      console.error(`配置检查失败: ${cfValidation.message}`);
       if (chatId === ALLOWED_CHAT_IDS[0]) {
         await ctx.reply(
           '⚠️ Bot 配置错误\n\n' +
