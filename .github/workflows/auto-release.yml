@@ -24,11 +24,20 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Build Changelog
-        id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get commit messages
+        id: get_commits
+        run: |
+          # 获取从上一个 tag 到当前 tag 的提交消息
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${{ steps.get_version.outputs.VERSION }}^" 2>/dev/null || echo "")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMIT_MSGS=$(git log "${PREVIOUS_TAG}..HEAD" --pretty=format:"%s" | sed 's/^/- /')
+          else
+            # 如果没有上一个 tag，获取所有提交消息
+            COMMIT_MSGS=$(git log --pretty=format:"%s" | sed 's/^/- /')
+          fi
+          # 将换行符转换为 GitHub Actions 支持的格式，并存入输出
+          COMMIT_MSGS=$(echo "$COMMIT_MSGS" | sed ':a;N;$ba;s/\n/\\n/g')
+          echo "COMMITS=$COMMIT_MSGS" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
@@ -43,7 +52,7 @@ jobs:
             
             ## 更新日志
             
-            ${{ steps.build_changelog.outputs.changelog }}
+            ${{ steps.get_commits.outputs.COMMITS }}
             
             ## 快速部署
             
