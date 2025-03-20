@@ -65,8 +65,16 @@ jobs:
           echo "ENCODED_TITLE=$ENCODED_TITLE" >> $GITHUB_ENV
           echo "ENCODED_MESSAGE=$ENCODED_MESSAGE" >> $GITHUB_ENV
      
-      - name: Send notification to Bark
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ secrets.BARK_URL }}/${{ env.ENCODED_TITLE }}/${{ env.ENCODED_MESSAGE }}?icon=https://github.githubassets.com/favicons/favicon.png
-          method: 'GET'
+          - name: Send notification to Bark (JSON format)
+          uses: fjogeleit/http-request-action@v1
+          with:
+            url: ${{ secrets.BARK_URL }}/push
+            method: 'POST'
+            contentType: 'application/json'
+            data: >-
+              {
+                "title": "${{ env.TITLE }}",
+                "body": "${{ env.MESSAGE }}",
+                "icon": "https://github.githubassets.com/favicons/favicon.png",
+                "group": "TelegramCFDNSBot"
+              }
