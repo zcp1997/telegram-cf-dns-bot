@@ -1,8 +1,6 @@
 const { Telegraf } = require('telegraf');
 const { TELEGRAM_TOKEN, ALLOWED_CHAT_IDS, DDNS_SAVE_INTERVAL_SECONDS } = require('./config');
-const { setupCommands, commands } = require('./handlers/commands');
-const { setupCallbacks } = require('./handlers/callbacks');
-const { setupMessageHandlers } = require('./handlers/messages');
+const { setupCommandsAndCallbacks, setupTextHandlers, commands } = require('./features/core');
 const { checkAccessWithCache } = require('./middleware/auth');
 const { restoreDDNSTasks, setupAutoSave } = require('./services/ddns-persistence');
 
@@ -12,9 +10,8 @@ const bot = new Telegraf(TELEGRAM_TOKEN);
 bot.use(checkAccessWithCache);
 
 // 设置处理器
-setupCommands(bot);
-setupCallbacks(bot);
-setupMessageHandlers(bot);
+setupCommandsAndCallbacks(bot);
+setupTextHandlers(bot);
 
 // 启动 Bot
 async function startBot() {
