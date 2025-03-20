@@ -63,6 +63,5 @@ jobs:
       - name: Send notification to Bark (JSON format)
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.BARK_URL }}/${{ env.TITLE }}/${{ env.MESSAGE }}
-          method: 'POST'
-          contentType: 'application/json'
+          url: ${{ secrets.BARK_URL }}/${{ env.TITLE }}/${{ env.MESSAGE }}?icon=https://github.githubassets.com/favicons/favicon.png
+          method: 'GET'
