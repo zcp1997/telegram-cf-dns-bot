@@ -47,6 +47,7 @@ services:
 
     volumes:
       - ./config:/app/config
+      - ./logs:/app/logs 
 
     # ipv6配置  
     # networks:
@@ -122,6 +123,7 @@ docker compose up -d
 - `/getdns` - 查询特定子域名的DNS记录
 - `/getdnsall` - 查询根域名下所有DNS记录
 - `/deldns` - 删除指定的DNS记录
+- `/dnschangelogs` - 查看DNS变更日志
 
 ### DDNS 动态域名功能
 

@@ -77,20 +77,15 @@ async function getCurrentIPv4() {
 async function getCurrentIPv6() {
   // IPv6获取服务列表
   const chinaIPv6Services = [
-    { url: 'https://6.ipw.cn', timeout: 5000, name: 'ipw.cn(国内)' },
     {
-      url: 'https://v6.ip.zxinc.org/info.php', timeout: 5000, name: 'zxinc.org(国内)', parser: (data) => {
-        const match = data.match(/ipaddr\s*=\s*'([0-9a-fA-F:]+)'/);
-        return match ? match[1] : null;
-      }
-    },
-    { url: 'https://v6.ipv6-test.com/api/myip.php', timeout: 5000, name: 'ipv6-test(国内兼容)' },
-    {
-      url: 'https://6.ipchaxun.com/', timeout: 5000, name: 'ipchaxun(国内)', parser: (data) => {
+      url: 'https://ipv6.ipip.net/', timeout: 5000, name: 'ipip.net(国内)', parser: (data) => {
+        // 解析页面中的IPv6地址
         const match = data.match(/([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}/);
         return match ? match[0] : null;
       }
-    }
+    },
+    { url: 'https://ip6.ddnspod.com', timeout: 5000, name: 'DDNS Pod(国内)' },
+    { url: 'https://speed.neu6.edu.cn/getIP.php', timeout: 5000, name: 'NEU6(国内)' },
   ];
 
   const globalIPv6Services = [

@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { CF_API_TOKEN, CF_API_BASE } = require('../config');
 const { getZoneIdForDomain } = require('../utils/domain');
+const { logDnsOperation } = require('../utils/dnsLogger');
 
 // Cloudflare API 函数
 async function getDnsRecord(domainName, getAllRecords = false) {
@@ -86,6 +87,17 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
         }
       });
       action = '更新';
+
+      // 记录DNS更新操作
+      logDnsOperation('update', {
+        domain: domainName,
+        ipAddress,
+        recordType,
+        proxied,
+        oldIpAddress: existingRecord.content,
+        oldProxied: existingRecord.proxied,
+        zoneId
+      });
     } else {
       // 创建新记录
       const createUrl = `${CF_API_BASE}/${zoneId}/dns_records`;
@@ -96,6 +108,15 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
         }
       });
       action = '创建';
+
+      // 记录DNS创建操作
+      logDnsOperation('create', {
+        domain: domainName,
+        ipAddress,
+        recordType,
+        proxied,
+        zoneId
+      });
     }
 
     if (response.status === 200 || response.status === 201) {
@@ -147,6 +168,19 @@ async function deleteDnsRecord(domainName) {
             'Content-Type': 'application/json'
           }
         });
+
+        // 记录删除操作
+        if (response.data.success) {
+          logDnsOperation('delete', {
+            domain: domainName,
+            recordType: record.type,
+            ipAddress: record.content,
+            proxied: record.proxied,
+            zoneId,
+            recordId
+          });
+        }
+
         return {
           success: response.data.success,
           type: record.type,
@@ -190,7 +224,7 @@ async function deleteDnsRecord(domainName) {
 }
 
 // 删除单条DNS记录
-async function deleteSingleDnsRecord(zoneId, recordId) {
+async function deleteSingleDnsRecord(zoneId, recordId, recordInfo) {
   try {
     const response = await axios.delete(`${CF_API_BASE}/${zoneId}/dns_records/${recordId}`, {
       headers: {
@@ -200,6 +234,18 @@ async function deleteSingleDnsRecord(zoneId, recordId) {
     });
 
     if (response.data.success) {
+      // 记录删除操作
+      if (recordInfo) {
+        logDnsOperation('delete', {
+          domain: recordInfo.name,
+          recordType: recordInfo.type,
+          ipAddress: recordInfo.content,
+          proxied: recordInfo.proxied,
+          zoneId,
+          recordId
+        });
+      }
+
       return {
         success: true,
         message: 'DNS记录已成功删除'
@@ -214,7 +260,7 @@ async function deleteSingleDnsRecord(zoneId, recordId) {
 }
 
 // 更新DNS记录
-async function updateDnsRecord(zoneId, recordId, name, content, type, proxied) {
+async function updateDnsRecord(zoneId, recordId, name, content, type, proxied, oldRecord) {
   try {
     console.log(`正在更新DNS记录: zoneId=${zoneId}, recordId=${recordId}, name=${name}, content=${content}, type=${type}, proxied=${proxied}`);
 
@@ -240,6 +286,18 @@ async function updateDnsRecord(zoneId, recordId, name, content, type, proxied) {
     });
 
     if (response.data.success) {
+      // 记录更新操作
+      logDnsOperation('update', {
+        domain: name,
+        ipAddress: content,
+        recordType: type,
+        proxied,
+        oldIpAddress: oldRecord?.content,
+        oldProxied: oldRecord?.proxied,
+        zoneId,
+        recordId
+      });
+
       return {
         success: true,
         message: 'DNS记录已成功更新',

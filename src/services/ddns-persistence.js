@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const { ddnsSessions } = require('../utils/session');
+const { ddnsSessions } = require('../features/core/session');
 
 // 配置文件路径 - 使用固定路径
 const CONFIG_DIR = './config';

@@ -48,7 +48,8 @@ services:
       # - ENABLE_IPV6_DDNS=false
 
     volumes:
-      - ./config:/app/config   
+      - ./config:/app/config 
+      - ./logs:/app/logs   
 
     # ipv6 configuration
     # networks:
@@ -124,6 +125,7 @@ docker compose up -d
 - `/getdns` - Query DNS records for a specific subdomain
 - `/getdnsall` - Query all DNS records under a root domain
 - `/deldns` - Delete specified DNS records
+- `/dnschangelogs` - Query DNS change logs
 
 ### DDNS (Dynamic DNS) Functions
 

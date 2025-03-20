@@ -1,6 +1,6 @@
 const { createOrUpdateDns } = require('./cloudflare');
 const { getCurrentIPv4, getCurrentIPv6 } = require('../utils/ip');
-const { ddnsSessions } = require('../utils/session');
+const { ddnsSessions } = require('../features/core/session');
 const { saveDDNSConfig } = require('./ddns-persistence');
 const { ENABLE_IPV6_DDNS } = require('../config');
 
