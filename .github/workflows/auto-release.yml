@@ -27,8 +27,11 @@ jobs:
       - name: Get commit messages
         id: get_commits
         run: |
-          # 获取从上一个 tag 到当前 tag 的提交消息
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${{ steps.get_version.outputs.VERSION }}^" 2>/dev/null || echo "")
+          # 获取最新的标签
+          LATEST_TAG=$(git describe --tags --abbrev=0)
+          
+          # 获取最新标签之前的标签
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "$LATEST_TAG^" 2>/dev/null || echo "")
           echo "Previous tag: $PREVIOUS_TAG"
           if [ -n "$PREVIOUS_TAG" ]; then
             echo "Current tag: ${{ steps.get_version.outputs.VERSION }}"
