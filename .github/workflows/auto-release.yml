@@ -2,12 +2,8 @@ name: Auto Release
 
 on:
   push:
-    branches:
-      - main
-# on:
-#   push:
-#     tags:
-#       - 'v*' # 当推送符合 v* 格式的标签时触发，例如 v1.0.0
+    tags:
+      - 'v*' # 当推送符合 v* 格式的标签时触发，例如 v1.0.0
 
 jobs:
   build:
