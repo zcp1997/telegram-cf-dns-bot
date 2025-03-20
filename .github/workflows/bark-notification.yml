@@ -58,41 +58,15 @@ jobs:
           echo "TITLE=${{ github.event.inputs.title }}" >> $GITHUB_ENV
           echo "MESSAGE=${{ github.event.inputs.message }}" >> $GITHUB_ENV
       
-      - name: URL encode variables and debug
+      - name: URL encode variables
         run: |
-          echo "原始 TITLE: ${{ env.TITLE }}"
-          echo "原始 MESSAGE: ${{ env.MESSAGE }}"
-          echo "原始 BARK_URL 前缀: ${{ secrets.BARK_URL }}"
-          
           ENCODED_TITLE=$(printf '%s' "${{ env.TITLE }}" | jq -s -R -r @uri)
           ENCODED_MESSAGE=$(printf '%s' "${{ env.MESSAGE }}" | jq -s -R -r @uri)
-          
-          echo "编码后 TITLE: $ENCODED_TITLE"
-          echo "编码后 MESSAGE: $ENCODED_MESSAGE"
-          
-          FINAL_URL="${{ secrets.BARK_URL }}/${ENCODED_TITLE}/${ENCODED_MESSAGE}?icon=https://github.githubassets.com/favicons/favicon.png&group=TelegramCFDNSBot"
-          echo "构建的完整URL(敏感信息已隐藏): ${FINAL_URL//${{ secrets.BARK_URL }}/BARK_URL_SECRET}"
-          
           echo "ENCODED_TITLE=$ENCODED_TITLE" >> $GITHUB_ENV
           echo "ENCODED_MESSAGE=$ENCODED_MESSAGE" >> $GITHUB_ENV
-          echo "FINAL_URL=$FINAL_URL" >> $GITHUB_ENV
      
-      - name: Try curl request for debugging
-        run: |
-          echo "尝试使用curl发送请求..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ env.FINAL_URL }}")
-          echo "curl 请求状态码: $STATUS"
-          
-          if [ $STATUS -ge 200 ] && [ $STATUS -lt 300 ]; then
-            echo "curl 请求成功"
-          else
-            echo "curl 请求失败，状态码: $STATUS"
-            RESPONSE=$(curl -s "${{ env.FINAL_URL }}")
-            echo "详细响应: $RESPONSE"
-          fi
-          
       - name: Send notification to Bark
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ env.FINAL_URL }}
+          url: ${{ secrets.BARK_URL }}/${{ env.ENCODED_TITLE }}/${{ env.ENCODED_MESSAGE }}?icon=https://github.githubassets.com/favicons/favicon.png
           method: 'GET'
