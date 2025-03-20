@@ -2,8 +2,12 @@ name: Auto Release
 
 on:
   push:
-    tags:
-      - 'v*' # 当推送符合 v* 格式的标签时触发，例如 v1.0.0
+    branches:
+      - main
+# on:
+#   push:
+#     tags:
+#       - 'v*' # 当推送符合 v* 格式的标签时触发，例如 v1.0.0
 
 jobs:
   build:
@@ -35,9 +39,13 @@ jobs:
             # 如果没有上一个 tag，获取所有提交消息
             COMMIT_MSGS=$(git log --pretty=format:"%s" | sed 's/^/- /')
           fi
-          # 将换行符转换为 GitHub Actions 支持的格式，并存入输出
-          COMMIT_MSGS=$(echo "$COMMIT_MSGS" | sed ':a;N;$ba;s/\n/\\n/g')
-          echo "COMMITS=$COMMIT_MSGS" >> $GITHUB_OUTPUT
+          # 使用 GitHub Actions 的多行字符串语法写入输出
+          {
+            echo "COMMITS<<EOF"
+            echo "$COMMIT_MSGS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: Create Release
         id: create_release
