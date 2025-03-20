@@ -60,24 +60,9 @@ jobs:
           echo "TITLE=${{ github.event.inputs.title }}" >> $GITHUB_ENV
           echo "MESSAGE=${{ github.event.inputs.message }}" >> $GITHUB_ENV
 
-      # 如果需要 URL 编码，可以保留此步骤，但这里不需要，因为 JSON 数据不需要手动编码
-      # - name: URL encode variables
-      #   run: |
-      #     ENCODED_TITLE=$(printf '%s' "${{ env.TITLE }}" | jq -s -R -r @uri)
-      #     ENCODED_MESSAGE=$(printf '%s' "${{ env.MESSAGE }}" | jq -s -R -r @uri)
-      #     echo "ENCODED_TITLE=$ENCODED_TITLE" >> $GITHUB_ENV
-      #     echo "ENCODED_MESSAGE=$ENCODED_MESSAGE" >> $GITHUB_ENV
-
       - name: Send notification to Bark (JSON format)
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.BARK_URL }}/push
+          url: ${{ secrets.BARK_URL }}/${{ env.TITLE }}/${{ env.MESSAGE }}
           method: 'POST'
           contentType: 'application/json'
-          data: |
-            {
-              "title": "${{ env.TITLE }}",
-              "body": "${{ env.MESSAGE }}",
-              "icon": "https://github.githubassets.com/favicons/favicon.png",
-              "group": "TelegramCFDNSBot"
-            }
