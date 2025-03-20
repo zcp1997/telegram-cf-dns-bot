@@ -29,12 +29,16 @@ jobs:
         run: |
           # 获取从上一个 tag 到当前 tag 的提交消息
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${{ steps.get_version.outputs.VERSION }}^" 2>/dev/null || echo "")
+          echo "Previous tag: $PREVIOUS_TAG"
           if [ -n "$PREVIOUS_TAG" ]; then
-            COMMIT_MSGS=$(git log "${PREVIOUS_TAG}..HEAD" --pretty=format:"%s" | sed 's/^/- /')
+            echo "Current tag: ${{ steps.get_version.outputs.VERSION }}"
+            COMMIT_MSGS=$(git log "${PREVIOUS_TAG}..${{ steps.get_version.outputs.VERSION }}" --pretty=format:"%s" | sed 's/^/- /')
           else
             # 如果没有上一个 tag，获取所有提交消息
             COMMIT_MSGS=$(git log --pretty=format:"%s" | sed 's/^/- /')
           fi
+
+          echo "Commit messages: $COMMIT_MSGS"
           # 使用 GitHub Actions 的多行字符串语法写入输出
           {
             echo "COMMITS<<EOF"
