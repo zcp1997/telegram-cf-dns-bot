@@ -75,10 +75,10 @@ function setupCallbacks(bot) {
 
       if (logs.length === 0) {
         await ctx.editMessageText(`${date} 没有DNS操作日志记录。`);
+        await ctx.answerCbQuery('没有找到日志记录');
         return;
       }
 
-      // 计算分页信息
       // 计算分页信息
       const totalPages = Math.ceil(logs.length / LOGS_PER_PAGE);
       const startIdx = page * LOGS_PER_PAGE;
@@ -130,10 +130,14 @@ function setupCallbacks(bot) {
           inline_keyboard: inlineKeyboard
         }
       });
+      
+      // 添加这一行来停止加载状态
+      await ctx.answerCbQuery(`已加载${date}的日志`);
 
     } catch (error) {
       console.error('处理查看日志回调失败:', error);
       await ctx.reply('获取DNS日志失败，请稍后再试。');
+      await ctx.answerCbQuery('加载日志失败');
     }
   });
 
