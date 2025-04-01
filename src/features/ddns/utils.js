@@ -31,21 +31,54 @@ function deleteDDNSProcessMessages(ctx, excludeMessageId = null) {
 
 // 设置DDNS的通用函数
 async function setupDDNS(ctx, session, interval) {
+  let statusMessage = null;
+  
   try {
-    // 获取当前IP
-    const currentIP = await getCurrentIPv4();
-    let currentIPv6 = null;
-    try {
-      currentIPv6 = await getCurrentIPv6();
-    } catch (error) {
-      // IPv6可能不可用，忽略错误
-    }
+    // 发送初始状态消息
+    statusMessage = await ctx.reply(
+      `⏳ 正在启动DDNS配置...\n` +
+      `步骤1/3: 正在获取当前IP地址...`
+    );
+
+    // 并行获取IPv4和IPv6
+    const [ipv4Promise, ipv6Promise] = [
+      getCurrentIPv4(),
+      getCurrentIPv6().catch(() => '不可用') // 如果获取IPv6失败，返回"不可用"
+    ];
     
-    // 启动DDNS服务，传递telegram对象而不是bot
+    // 更新状态消息
+    await ctx.telegram.editMessageText(
+      ctx.chat.id,
+      statusMessage.message_id,
+      null,
+      `⏳ 正在启动DDNS配置...\n` +
+      `步骤1/3: 正在获取当前IP地址...\n` +
+      `步骤2/3: 正在准备DDNS服务...`
+    );
+
+    // 等待IP获取完成
+    const [currentIP, currentIPv6] = await Promise.all([ipv4Promise, ipv6Promise]);
+    
+    // 更新状态
+    await ctx.telegram.editMessageText(
+      ctx.chat.id,
+      statusMessage.message_id,
+      null,
+      `⏳ 正在启动DDNS配置...\n` +
+      `步骤1/3: IP地址获取成功 ✓\n` +
+      `步骤2/3: 准备DDNS服务 ✓\n` +
+      `步骤3/3: 正在启动DDNS服务...`
+    );
+    
+    // 启动DDNS服务
     startDDNS(ctx.chat.id, session.domain, interval, ctx.telegram);
     
-    await ctx.reply(
-      `✅ DDNS已设置成功！\n\n` +
+    // 更新为完成状态
+    await ctx.telegram.editMessageText(
+      ctx.chat.id,
+      statusMessage.message_id,
+      null,
+      `✅ DDNS配置已完成！\n\n` +
       `域名: ${session.domain}\n` +
       `当前IPv4: ${currentIP}\n` +
       `当前IPv6: ${currentIPv6}\n` +
@@ -55,11 +88,24 @@ async function setupDDNS(ctx, session, interval) {
       `使用 /stopddns 停止DDNS任务`
     );
 
-    await deleteDDNSProcessMessages(ctx);
+    //await deleteDDNSProcessMessages(ctx, statusMessage.message_id);
     // 清除会话
     userSessions.delete(ctx.chat.id);
   } catch (error) {
-    await ctx.reply(`设置DDNS失败: ${error.message}`);
+    // 错误处理，更新状态消息或发送新消息
+    if (statusMessage) {
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        statusMessage.message_id,
+        null,
+        `❌ DDNS配置失败: ${error.message}\n`
+      ).catch(() => {
+        // 如果编辑失败，发送新消息
+        ctx.reply(`❌ DDNS配置失败: ${error.message}`);
+      });
+    } else {
+      await ctx.reply(`❌ DDNS配置失败: ${error.message}`);
+    }
     userSessions.delete(ctx.chat.id);
   }
 }
