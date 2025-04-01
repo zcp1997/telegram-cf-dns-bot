@@ -103,33 +103,6 @@ function setup(bot) {
       }
     });
   });
-
-  // 删除DDNS任务命令
-  bot.command(commands.delddns_command.command, async (ctx) => {
-    const tasks = getAllDDNSTasks();
-
-    if (tasks.length === 0) {
-      await ctx.reply('当前没有运行中的DDNS任务。');
-      return;
-    }
-
-    // 创建域名选择按钮
-    const ddnsButtons = tasks.map(task => {
-      return [{ text: task.domain, callback_data: `delete_ddns_${task.domain}` }];
-    });
-
-    // 添加全部删除按钮
-    ddnsButtons.push([{ text: '删除所有DDNS任务', callback_data: 'delete_all_ddns' }]);
-
-    // 添加取消按钮
-    ddnsButtons.push([{ text: '取消操作', callback_data: 'cancel_delete_ddns' }]);
-
-    await createDDNSTrackedReply(ctx)('请选择要删除的DDNS任务：', {
-      reply_markup: {
-        inline_keyboard: ddnsButtons
-      }
-    });
-  });
   
   setupCallbacks(bot);
 }
