@@ -7,7 +7,6 @@ const commands = [
   { command: 'ddns', description: '设置自动DDNS' },
   { command: 'ddnsstatus', description: '查看DDNS任务状态' },
   { command: 'stopddns', description: '停止DDNS任务' },
-  { command: 'delddns', description: '删除DDNS任务' },
 ];
 
 // 为数组添加命令引用
