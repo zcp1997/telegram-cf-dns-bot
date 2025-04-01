@@ -87,7 +87,7 @@ async function setupDDNS(ctx, session, interval) {
       `使用 /stopddns 停止DDNS任务`
     );
 
-    //await deleteDDNSProcessMessages(ctx, statusMessage.message_id);
+    await deleteDDNSProcessMessages(ctx, statusMessage.message_id);
     // 清除会话
     userSessions.delete(ctx.chat.id);
   } catch (error) {
