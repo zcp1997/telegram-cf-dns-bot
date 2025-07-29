@@ -74,7 +74,6 @@ jobs:
             docker pull ghcr.io/zcp1997/telegram-cf-dns-bot:latest
             
             # 使用 docker-compose 部署
-            version: '3'
             services:
               tg-cf-dns-bot:
                 image: ghcr.io/zcp1997/telegram-cf-dns-bot:latest

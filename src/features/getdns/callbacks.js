@@ -203,6 +203,41 @@ function setupCallbacks(bot) {
       return;
     }
 
+    session.state = SessionState.WAITING_UPDATE_CHOICE;
+
+    await ctx.answerCbQuery();
+    await createGetDnsReply(ctx)(
+      `请选择要修改的内容:\n\n` +
+      `域名: ${session.selectedRecord.name}\n` +
+      `当前IP: ${session.selectedRecord.content}\n` +
+      `当前代理状态: ${session.selectedRecord.proxied ? '已启用' : '未启用'}`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '🔄 修改IP地址', callback_data: 'dns_update_ip' },
+              { text: '🔁 修改代理状态', callback_data: 'dns_update_proxy_only' }
+            ],
+            [
+              { text: '取消操作', callback_data: 'cancel_update_dns' }
+            ]
+          ]
+        }
+      }
+    );
+  });
+
+  // 新增：处理选择修改IP地址
+  bot.action('dns_update_ip', async (ctx) => {
+    trackGetDnsMessage(ctx);
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+
+    if (!session || session.state !== SessionState.WAITING_UPDATE_CHOICE) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
     session.state = SessionState.WAITING_DNS_UPDATE_NEW_IP;
 
     await ctx.answerCbQuery();
@@ -219,6 +254,105 @@ function setupCallbacks(bot) {
         }
       }
     );
+  });
+
+  // 新增：处理选择仅修改代理状态
+  bot.action('dns_update_proxy_only', async (ctx) => {
+    trackGetDnsMessage(ctx);
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+
+    if (!session || session.state !== SessionState.WAITING_UPDATE_CHOICE) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    const record = session.selectedRecord;
+    const currentProxyStatus = record.proxied ? '已启用' : '未启用';
+    const suggestedStatus = record.proxied ? '未启用' : '已启用';
+
+    await ctx.answerCbQuery();
+    await createGetDnsReply(ctx)(
+      `修改 ${record.name} 的代理状态\n\n` +
+      `当前状态: ${currentProxyStatus}\n` +
+      `建议切换为: ${suggestedStatus}\n\n` +
+      `注意：某些服务（如 SSH、FTP 等）可能需要关闭代理才能正常使用。`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '❌ 设置为不启用代理', callback_data: 'dns_proxy_only_no' },
+              { text: '✅ 设置为启用代理', callback_data: 'dns_proxy_only_yes' }
+            ],
+            [
+              { text: '取消操作', callback_data: 'cancel_update_dns' }
+            ]
+          ]
+        }
+      }
+    );
+  });
+
+  // 处理仅修改代理状态的通用函数
+  async function handleProxyOnlyUpdate(ctx, proxied) {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+
+    if (!session || session.state !== SessionState.WAITING_UPDATE_CHOICE) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    const record = session.selectedRecord;
+    const proxyStatusText = proxied ? '启用代理' : '禁用代理';
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(
+      `正在更新代理状态: ${record.name} -> ${proxyStatusText}`
+    );
+
+    try {
+      // 检查记录是否包含必要的字段
+      if (!record.zone_id || !record.id) {
+        throw new Error(`记录信息不完整: zone_id=${record.zone_id}, id=${record.id}`);
+      }
+
+      console.log(`更新代理状态记录信息: ${JSON.stringify(record)}`);
+
+      // 只修改代理状态，IP地址保持不变
+      await updateDnsRecord(
+        record.zone_id,
+        record.id,
+        record.name,
+        record.content, // 保持原IP不变
+        record.type,
+        proxied,
+        record // 传递完整的原始记录
+      );
+      
+      const statusText = proxied ? '已启用代理' : '已禁用代理';
+      await ctx.reply(`DNS记录代理状态已成功更新: ${record.name} -> ${statusText}`);
+      deleteGetDnsProcessMessages(ctx);
+    } catch (error) {
+      let errorMessage = `更新代理状态过程中发生错误: ${error.message}`;
+      if (error.response) {
+        errorMessage += ` (状态码: ${error.response.status})`;
+      }
+      await ctx.reply(errorMessage);
+      console.error('更新DNS记录代理状态时出错:', error);
+    }
+
+    userSessions.delete(chatId);
+  }
+
+  // 重构后的代理状态处理器 - 启用
+  bot.action('dns_proxy_only_yes', async (ctx) => {
+    await handleProxyOnlyUpdate(ctx, true);
+  });
+
+  // 重构后的代理状态处理器 - 禁用
+  bot.action('dns_proxy_only_no', async (ctx) => {
+    await handleProxyOnlyUpdate(ctx, false);
   });
 
   // 处理删除记录请求
