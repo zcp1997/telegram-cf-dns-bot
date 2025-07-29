@@ -1,6 +1,6 @@
 # Cloudflare DNS Manager
 
-A Telegram Bot-based interactive Cloudflare DNS record management tool, supporting multi-domain management for easily adding, updating, deleting, and querying DNS records.
+A Telegram Bot-based interactive Cloudflare DNS record management tool, supporting multi-domain management for easily adding, updating, deleting, and querying domain A or AAAA records .
 
 ## Features
 
