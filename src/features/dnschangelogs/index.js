@@ -70,5 +70,6 @@ function setup(bot) {
 }
 
 module.exports = {
-  setup
+  setup,
+  command
 };

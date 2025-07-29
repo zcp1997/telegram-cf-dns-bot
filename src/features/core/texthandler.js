@@ -41,6 +41,11 @@ function setupTextHandler(bot) {
         await handleSubdomainInput(ctx, session);
         break;
 
+      // 新增：处理更新选择状态（用户应该使用按钮而不是文本输入）
+      case SessionState.WAITING_UPDATE_CHOICE:
+        await ctx.reply('请使用按钮选择要修改的内容，而不是输入文本。');
+        break;
+
       // ddns 相关状态
       case SessionState.WAITING_SUBDOMAIN_FOR_DDNS:
         await handleSubdomainForDDNS(ctx, session);
@@ -55,4 +60,6 @@ function setupTextHandler(bot) {
   });
 }
 
-module.exports = { setupTextHandler };
+module.exports = {
+  setupTextHandler
+};

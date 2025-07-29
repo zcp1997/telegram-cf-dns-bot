@@ -238,7 +238,9 @@ function setupCallbacks(bot) {
       return;
     }
 
+    // 立即更新状态以避免竞态条件
     session.state = SessionState.WAITING_DNS_UPDATE_NEW_IP;
+    session.lastUpdate = Date.now();
 
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
