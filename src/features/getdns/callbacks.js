@@ -21,8 +21,12 @@ function setupCallbacks(bot) {
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
       `已选择域名: ${rootDomain}\n\n` +
-      `请输入子域名前缀（如：www），或直接发送 "." 查询根域名。\n\n` +
-      `例如：输入 "www" 将查询 www.${rootDomain}`,
+      `请输入要查询的具体域名，或直接发送 "." 查询根域名。\n\n` +
+      `支持查询的记录类型: 4️⃣A记录 6️⃣AAAA记录 🔗CNAME记录 📄TXT记录\n\n` +
+      `示例：\n` +
+      `• 输入 "www" → 查询 www.${rootDomain}\n` +
+      `• 输入 "mail" → 查询 mail.${rootDomain}\n` +
+      `• 输入 "." → 查询 ${rootDomain}`,
       {
         reply_markup: {
           inline_keyboard: [[
@@ -788,8 +792,16 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
-      '请输入要搜索的域名关键字：\n\n' +
-      '例如：输入 "eu.org" 可以找到所有包含 "eu.org" 的域名。',
+      '🔍 请输入域名搜索关键字：\n\n' +
+      '可以搜索域名中的任何部分，支持以下记录类型：\n' +
+      '4️⃣ A记录 (IPv4)\n' +
+      '6️⃣ AAAA记录 (IPv6)\n' +
+      '🔗 CNAME记录 (域名别名)\n' +
+      '📄 TXT记录 (文本记录)\n\n' +
+      '搜索示例：\n' +
+      '• 输入 "blog" → 找到 blog.example.com\n' +
+      '• 输入 "api" → 找到 api.mydomain.org\n' +
+      '• 输入 ".com" → 找到所有 .com 域名',
       {
         reply_markup: {
           inline_keyboard: [[

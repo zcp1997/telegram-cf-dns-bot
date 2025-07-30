@@ -5,12 +5,12 @@ const { getDnsRecord } = require('../../services/cloudflare');
 
 const command = {
   command: 'getdns',
-  description: '查询DNS记录'
+  description: '查询特定域名的DNS记录 (A/AAAA/CNAME/TXT)'
 };
 
 const commandAll = {
   command: 'getdnsall',
-  description: '查询所有DNS记录'
+  description: '查询域名下所有DNS记录 (A/AAAA/CNAME/TXT)'
 };
 
 const commands = [command, commandAll];
@@ -155,8 +155,11 @@ async function queryDomainRecords(ctx, domainName) {
 
         await createGetDnsReply(ctx)(
           `未找到 ${domainName} 的DNS记录\n\n` +
-          `请重新输入子域名前缀（如：www），或直接发送 "." 查询根域名。\n\n` +
-          `例如：输入 "www" 将查询 www.${session.rootDomain}`,
+          `请重新输入要查询的域名，或直接发送 "." 查询根域名。\n\n` +
+          `支持的记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT\n\n` +
+          `示例：\n` +
+          `• 输入 "api" → 查询 api.${session.rootDomain}\n` +
+          `• 输入 "." → 查询 ${session.rootDomain}`,
           {
             reply_markup: {
               inline_keyboard: [[
@@ -183,8 +186,11 @@ async function queryDomainRecords(ctx, domainName) {
 
       await createGetDnsReply(ctx)(
         `查询过程中发生错误: ${error.message}\n\n` +
-        `请重新输入子域名前缀（如：www），或直接发送 "." 查询根域名。\n\n` +
-        `例如：输入 "www" 将查询 www.${session.rootDomain}`,
+        `请重新输入要查询的域名，或直接发送 "." 查询根域名。\n\n` +
+        `支持的记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT\n\n` +
+        `示例：\n` +
+        `• 输入 "blog" → 查询 blog.${session.rootDomain}\n` +
+        `• 输入 "." → 查询 ${session.rootDomain}`,
         {
           reply_markup: {
             inline_keyboard: [[
@@ -301,13 +307,19 @@ async function displayDomainsPage(ctx, domains, currentPage, commandType, search
   
   // 构建消息文本
   let message = searchKeyword ? 
-    `搜索结果 (关键字: "${searchKeyword}"):\n` :
-    '请选择要查询的域名：\n';
+    `🔍 搜索结果 (关键字: "${searchKeyword}"):\n` :
+    '📋 请选择要查询DNS记录的域名：\n';
   
-  message += `\n第${startIdx + 1}-${endIdx}条，共${filteredDomains.length}个域名`;
+  message += `\n🌐 第${startIdx + 1}-${endIdx}条，共${filteredDomains.length}个域名`;
   
   if (totalPages > 1) {
     message += ` (第${currentPage + 1}页/共${totalPages}页)`;
+  }
+  
+  message += `\n\n支持记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT`;
+  
+  if (!searchKeyword) {
+    message += `\n💡 点击 🔍搜索域名 可快速查找特定域名`;
   }
   
   await createGetDnsReply(ctx)(message, {
