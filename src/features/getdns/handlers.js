@@ -1,6 +1,7 @@
-const { SessionState } = require('../core/session');
+const { userSessions, SessionState } = require('../core/session');
 const { validateIpAddress } = require('../../services/validation');
-const { trackGetDnsMessage, createGetDnsReply, queryDomainRecords } = require('./utils');
+const { trackGetDnsMessage, createGetDnsReply, queryDomainRecords, displayDomainsPage } = require('./utils');
+const { getConfiguredDomains } = require('../../utils/domain');
 
 // 处理新IP地址输入
 async function handleDnsUpdateIpInput(ctx, session) {
@@ -70,7 +71,54 @@ async function handleSubdomainInput(ctx, session) {
   await queryDomainRecords(ctx, fullDomain);
 }
 
+// 处理搜索关键字输入
+async function handleSearchKeywordInput(ctx, session) {
+  trackGetDnsMessage(ctx);
+  const searchKeyword = ctx.message.text.trim();
+
+  // 限制搜索关键字长度
+  if (searchKeyword.length > 50) {
+    await createGetDnsReply(ctx)('搜索关键字过长，请输入不超过50个字符的关键字。');
+    return;
+  }
+
+  // 检查是否为空
+  if (searchKeyword === '') {
+    await createGetDnsReply(ctx)('搜索关键字不能为空，请重新输入。');
+    return;
+  }
+
+  // 更新会话状态
+  session.searchKeyword = searchKeyword;
+  session.currentPage = 0;
+
+  // 根据当前状态判断是哪种命令类型
+  let commandType, targetState;
+  if (session.state === SessionState.WAITING_SEARCH_KEYWORD_FOR_QUERY) {
+    commandType = 'query';
+    targetState = SessionState.SELECTING_DOMAIN_FOR_QUERY;
+  } else if (session.state === SessionState.WAITING_SEARCH_KEYWORD_FOR_ALL) {
+    commandType = 'all';
+    targetState = SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
+  } else {
+    await createGetDnsReply(ctx)('会话状态错误，请重新开始。');
+    userSessions.delete(ctx.chat.id);
+    return;
+  }
+
+  session.state = targetState;
+  session.lastUpdate = Date.now();
+
+  try {
+    const domains = await getConfiguredDomains();
+    await displayDomainsPage(ctx, domains, 0, commandType, searchKeyword);
+  } catch (error) {
+    await createGetDnsReply(ctx)(`搜索域名失败: ${error.message}`);
+  }
+}
+
 module.exports = {
   handleDnsUpdateIpInput,
-  handleSubdomainInput
+  handleSubdomainInput,
+  handleSearchKeywordInput
 };

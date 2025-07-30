@@ -2,7 +2,7 @@ const { userSessions, SessionState } = require('../core/session');
 const { handleIpInput, handleSubdomainForSet } = require('../../features/setdns/handlers');
 const { handleSubdomainForDDNS, handleIntervalForDDNS } = require('../../features/ddns/handlers');
 const { handleSubdomainForDelete } = require('../../features/deldns/handlers');
-const { handleDnsUpdateIpInput, handleSubdomainInput } = require('../../features/getdns/handlers');
+const { handleDnsUpdateIpInput, handleSubdomainInput, handleSearchKeywordInput } = require('../../features/getdns/handlers');
 
 function setupTextHandler(bot) {
   bot.on('text', async (ctx) => {
@@ -39,6 +39,12 @@ function setupTextHandler(bot) {
 
       case SessionState.WAITING_SUBDOMAIN_INPUT:
         await handleSubdomainInput(ctx, session);
+        break;
+
+      // 处理搜索关键字输入状态
+      case SessionState.WAITING_SEARCH_KEYWORD_FOR_QUERY:
+      case SessionState.WAITING_SEARCH_KEYWORD_FOR_ALL:
+        await handleSearchKeywordInput(ctx, session);
         break;
 
       // 新增：处理更新选择状态（用户应该使用按钮而不是文本输入）

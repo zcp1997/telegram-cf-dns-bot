@@ -1,6 +1,6 @@
 const { userSessions, SessionState } = require('../core/session');
 const { trackContextMessage, createTrackedReply, deleteProcessMessages } = require('../../utils/messageManager');
-const { DNS_RECORDS_PAGE_SIZE } = require('../../config');
+const { DNS_RECORDS_PAGE_SIZE, DOMAINS_PAGE_SIZE } = require('../../config');
 const { getDnsRecord } = require('../../services/cloudflare');
 
 const command = {
@@ -184,6 +184,121 @@ async function queryDomainRecords(ctx, domainName) {
   }
 }
 
+// 过滤域名函数
+function filterDomains(domains, searchKeyword) {
+  if (!searchKeyword || searchKeyword.trim() === '') {
+    return domains;
+  }
+  
+  const keyword = searchKeyword.toLowerCase().trim();
+  return domains.filter(domain => 
+    domain.toLowerCase().includes(keyword)
+  );
+}
+
+// 显示域名列表分页
+async function displayDomainsPage(ctx, domains, currentPage, commandType, searchKeyword = '') {
+  trackGetDnsMessage(ctx);
+  
+  // 过滤域名
+  const filteredDomains = filterDomains(domains, searchKeyword);
+  
+  if (filteredDomains.length === 0) {
+    const message = searchKeyword ? 
+      `没有找到包含关键字 "${searchKeyword}" 的域名。` : 
+      '未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。';
+    
+    await createGetDnsReply(ctx)(message, {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '取消操作', callback_data: 'cancel_getdns' }]
+        ]
+      }
+    });
+    return;
+  }
+  
+  // 计算分页
+  const totalPages = Math.ceil(filteredDomains.length / DOMAINS_PAGE_SIZE);
+  const startIdx = currentPage * DOMAINS_PAGE_SIZE;
+  const endIdx = Math.min(startIdx + DOMAINS_PAGE_SIZE, filteredDomains.length);
+  const pageDomains = filteredDomains.slice(startIdx, endIdx);
+  
+  // 创建域名按钮
+  const domainButtons = pageDomains.map(domain => {
+    const callbackPrefix = commandType === 'query' ? 'select_domain_query_' : 'select_domain_all_';
+    return [{ text: domain, callback_data: `${callbackPrefix}${domain}` }];
+  });
+  
+  // 创建分页导航按钮
+  const navigationButtons = [];
+  
+  // 上一页按钮
+  if (currentPage > 0) {
+    navigationButtons.push({ 
+      text: '⬅️ 上一页', 
+      callback_data: `domains_prev_page_${commandType}` 
+    });
+  }
+  
+  // 页码信息
+  navigationButtons.push({
+    text: `${currentPage + 1}/${totalPages}`,
+    callback_data: 'domains_page_info'
+  });
+  
+  // 下一页按钮
+  if (currentPage < totalPages - 1) {
+    navigationButtons.push({ 
+      text: '下一页 ➡️', 
+      callback_data: `domains_next_page_${commandType}` 
+    });
+  }
+  
+  // 操作按钮
+  const actionButtons = [];
+  
+  // 搜索按钮
+  actionButtons.push({ 
+    text: '🔍 搜索域名', 
+    callback_data: `search_domains_${commandType}` 
+  });
+  
+  if (searchKeyword) {
+    actionButtons.push({ 
+      text: '🔄 显示全部', 
+      callback_data: `show_all_domains_${commandType}` 
+    });
+  }
+  
+  // 取消按钮
+  actionButtons.push({ text: '取消操作', callback_data: 'cancel_getdns' });
+  
+  // 合并所有按钮
+  const inlineKeyboard = [...domainButtons];
+  if (navigationButtons.length > 0) {
+    inlineKeyboard.push(navigationButtons);
+  }
+  inlineKeyboard.push(actionButtons);
+  
+  // 构建消息文本
+  let message = searchKeyword ? 
+    `搜索结果 (关键字: "${searchKeyword}"):\n` :
+    '请选择要查询的域名：\n';
+  
+  message += `\n第${startIdx + 1}-${endIdx}条，共${filteredDomains.length}个域名`;
+  
+  if (totalPages > 1) {
+    message += ` (第${currentPage + 1}页/共${totalPages}页)`;
+  }
+  
+  await createGetDnsReply(ctx)(message, {
+    reply_markup: {
+      inline_keyboard: inlineKeyboard
+    }
+  });
+}
+
 module.exports = {
   command,
   commandAll,
@@ -191,5 +306,7 @@ module.exports = {
   createGetDnsReply,
   deleteGetDnsProcessMessages,
   displayDnsRecordsPage,
-  queryDomainRecords
+  queryDomainRecords,
+  displayDomainsPage,
+  filterDomains
 };

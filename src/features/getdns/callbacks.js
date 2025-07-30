@@ -1,7 +1,7 @@
 const { userSessions, SessionState } = require('../core/session');
-const { trackGetDnsMessage, createGetDnsReply, deleteGetDnsProcessMessages, queryDomainRecords, displayDnsRecordsPage } = require('./utils');
+const { trackGetDnsMessage, createGetDnsReply, deleteGetDnsProcessMessages, queryDomainRecords, displayDnsRecordsPage, displayDomainsPage } = require('./utils');
 const { deleteSingleDnsRecord, updateDnsRecord, getDnsRecord } = require('../../services/cloudflare');
-const { getZoneIdForDomain } = require('../../utils/domain');
+const { getZoneIdForDomain, getConfiguredDomains } = require('../../utils/domain');
 const { DNS_RECORDS_PAGE_SIZE } = require('../../config');
 
 function setupCallbacks(bot) {
@@ -617,6 +617,199 @@ function setupCallbacks(bot) {
     } catch (error) {
       await createGetDnsReply(ctx)(`查询过程中发生错误: ${error.message}`);
     }
+  });
+
+  // 域名列表分页导航 - 上一页
+  bot.action(/^domains_prev_page_(query|all)$/, async (ctx) => {
+    trackGetDnsMessage(ctx);
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+    const commandType = ctx.match[1];
+
+    const expectedState = commandType === 'query' ? 
+      SessionState.SELECTING_DOMAIN_FOR_QUERY : 
+      SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
+
+    if (!session || session.state !== expectedState) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    if (session.currentPage > 0) {
+      session.currentPage--;
+      session.lastUpdate = Date.now();
+      
+      try {
+        const domains = await getConfiguredDomains();
+        await displayDomainsPage(ctx, domains, session.currentPage, commandType, session.searchKeyword);
+      } catch (error) {
+        await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      }
+    }
+
+    await ctx.answerCbQuery();
+  });
+
+  // 域名列表分页导航 - 下一页
+  bot.action(/^domains_next_page_(query|all)$/, async (ctx) => {
+    trackGetDnsMessage(ctx);
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+    const commandType = ctx.match[1];
+
+    const expectedState = commandType === 'query' ? 
+      SessionState.SELECTING_DOMAIN_FOR_QUERY : 
+      SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
+
+    if (!session || session.state !== expectedState) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    try {
+      const domains = await getConfiguredDomains();
+      const { DOMAINS_PAGE_SIZE } = require('../../config');
+      const totalPages = Math.ceil(domains.length / DOMAINS_PAGE_SIZE);
+      
+      if (session.currentPage < totalPages - 1) {
+        session.currentPage++;
+        session.lastUpdate = Date.now();
+        
+        await displayDomainsPage(ctx, domains, session.currentPage, commandType, session.searchKeyword);
+      }
+    } catch (error) {
+      await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+    }
+
+    await ctx.answerCbQuery();
+  });
+
+  // 域名列表页码信息
+  bot.action('domains_page_info', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+    
+    if (session) {
+      try {
+        const domains = await getConfiguredDomains();
+        const { DOMAINS_PAGE_SIZE } = require('../../config');
+        const totalPages = Math.ceil(domains.length / DOMAINS_PAGE_SIZE);
+        await ctx.answerCbQuery(`第 ${session.currentPage + 1} 页，共 ${totalPages} 页`);
+      } catch (error) {
+        await ctx.answerCbQuery('页码信息');
+      }
+    } else {
+      await ctx.answerCbQuery('会话已过期');
+    }
+  });
+
+  // 搜索域名功能
+  bot.action(/^search_domains_(query|all)$/, async (ctx) => {
+    trackGetDnsMessage(ctx);
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+    const commandType = ctx.match[1];
+
+    const expectedState = commandType === 'query' ? 
+      SessionState.SELECTING_DOMAIN_FOR_QUERY : 
+      SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
+
+    if (!session || session.state !== expectedState) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    // 更新会话状态
+    session.state = commandType === 'query' ? 
+      SessionState.WAITING_SEARCH_KEYWORD_FOR_QUERY : 
+      SessionState.WAITING_SEARCH_KEYWORD_FOR_ALL;
+    session.lastUpdate = Date.now();
+
+    await ctx.answerCbQuery();
+    await createGetDnsReply(ctx)(
+      '请输入要搜索的域名关键字：\n\n' +
+      '例如：输入 "example" 可以找到所有包含 "example" 的域名。',
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '取消搜索', callback_data: 'cancel_search_domains' }
+          ]]
+        }
+      }
+    );
+  });
+
+  // 显示全部域名功能
+  bot.action(/^show_all_domains_(query|all)$/, async (ctx) => {
+    trackGetDnsMessage(ctx);
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+    const commandType = ctx.match[1];
+
+    const expectedSearchState = commandType === 'query' ? 
+      SessionState.WAITING_SEARCH_KEYWORD_FOR_QUERY : 
+      SessionState.WAITING_SEARCH_KEYWORD_FOR_ALL;
+    const expectedSelectState = commandType === 'query' ? 
+      SessionState.SELECTING_DOMAIN_FOR_QUERY : 
+      SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
+
+    if (!session || (session.state !== expectedSearchState && session.state !== expectedSelectState)) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    // 重置搜索关键字和页码
+    session.searchKeyword = '';
+    session.currentPage = 0;
+    session.state = expectedSelectState;
+    session.lastUpdate = Date.now();
+
+    try {
+      const domains = await getConfiguredDomains();
+      await displayDomainsPage(ctx, domains, 0, commandType);
+    } catch (error) {
+      await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+    }
+
+    await ctx.answerCbQuery();
+  });
+
+  // 取消搜索域名功能
+  bot.action('cancel_search_domains', async (ctx) => {
+    trackGetDnsMessage(ctx);
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+
+    if (!session) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    // 根据当前状态判断回到哪个状态
+    if (session.state === SessionState.WAITING_SEARCH_KEYWORD_FOR_QUERY) {
+      session.state = SessionState.SELECTING_DOMAIN_FOR_QUERY;
+      const commandType = 'query';
+      
+      try {
+        const domains = await getConfiguredDomains();
+        await displayDomainsPage(ctx, domains, session.currentPage, commandType, session.searchKeyword);
+      } catch (error) {
+        await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      }
+    } else if (session.state === SessionState.WAITING_SEARCH_KEYWORD_FOR_ALL) {
+      session.state = SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
+      const commandType = 'all';
+      
+      try {
+        const domains = await getConfiguredDomains();
+        await displayDomainsPage(ctx, domains, session.currentPage, commandType, session.searchKeyword);
+      } catch (error) {
+        await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      }
+    }
+
+    session.lastUpdate = Date.now();
+    await ctx.answerCbQuery();
   });
 
 }
