@@ -1,6 +1,6 @@
 const { userSessions, SessionState } = require('../core/session');
 const { getConfiguredDomains } = require('../../utils/domain');
-const { command, trackSetDnsMessage, createSetDnsReply } = require('./utils');
+const { command, displayDomainsPage } = require('./utils');
 const { setupCallbacks } = require('./callbacks');
 
 function setup(bot) {
@@ -8,31 +8,14 @@ function setup(bot) {
     const chatId = ctx.chat.id;
     userSessions.set(chatId, {
       state: SessionState.SELECTING_DOMAIN_FOR_SET,
-      lastUpdate: Date.now()
+      lastUpdate: Date.now(),
+      currentPage: 0,
+      searchKeyword: ''
     });
 
     try {
       const domains = await getConfiguredDomains();
-      if (domains.length === 0) {
-        ctx.reply('未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。');
-        return;
-      }
-
-      let message = '请选择要设置的域名：';
-
-      // 创建域名选择按钮
-      const domainButtons = domains.map(domain => {
-        return [{ text: domain, callback_data: `select_domain_set_${domain}` }];
-      });
-
-      // 添加取消按钮
-      domainButtons.push([{ text: '取消操作', callback_data: 'cancel_setdns' }]);
-
-      await createSetDnsReply(ctx)(message, {
-        reply_markup: {
-          inline_keyboard: domainButtons
-        }
-      });
+      await displayDomainsPage(ctx, domains, 0);
     } catch (error) {
       ctx.reply(`获取域名列表失败: ${error.message}`);
     }

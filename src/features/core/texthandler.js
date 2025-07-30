@@ -1,7 +1,7 @@
 const { userSessions, SessionState } = require('../core/session');
-const { handleRecordContentInput, handleSubdomainForSet } = require('../../features/setdns/handlers');
+const { handleRecordContentInput, handleSubdomainForSet, handleSearchKeywordInputForSet } = require('../../features/setdns/handlers');
 const { handleSubdomainForDDNS, handleIntervalForDDNS } = require('../../features/ddns/handlers');
-const { handleSubdomainForDelete } = require('../../features/deldns/handlers');
+const { handleSubdomainForDelete, handleSearchKeywordInputForDelete } = require('../../features/deldns/handlers');
 const { handleDnsUpdateIpInput, handleSubdomainInput, handleSearchKeywordInput } = require('../../features/getdns/handlers');
 
 function setupTextHandler(bot) {
@@ -45,6 +45,12 @@ function setupTextHandler(bot) {
       case SessionState.WAITING_SEARCH_KEYWORD_FOR_QUERY:
       case SessionState.WAITING_SEARCH_KEYWORD_FOR_ALL:
         await handleSearchKeywordInput(ctx, session);
+        break;
+      case SessionState.WAITING_SEARCH_KEYWORD_FOR_SET:
+        await handleSearchKeywordInputForSet(ctx, session);
+        break;
+      case SessionState.WAITING_SEARCH_KEYWORD_FOR_DELETE:
+        await handleSearchKeywordInputForDelete(ctx, session);
         break;
 
       // 处理记录类型选择状态（用户应该使用按钮而不是文本输入）

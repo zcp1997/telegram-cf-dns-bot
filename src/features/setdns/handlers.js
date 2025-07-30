@@ -140,8 +140,41 @@ async function handleSubdomainForSet(ctx, session) {
 }
 
 
+// 处理搜索关键字输入
+async function handleSearchKeywordInputForSet(ctx, session) {
+  trackSetDnsMessage(ctx);
+  const searchKeyword = ctx.message.text.trim();
+
+  // 限制搜索关键字长度
+  if (searchKeyword.length > 50) {
+    await createSetDnsReply(ctx)('搜索关键字过长，请输入不超过50个字符的关键字。');
+    return;
+  }
+
+  // 检查是否为空
+  if (searchKeyword === '') {
+    await createSetDnsReply(ctx)('搜索关键字不能为空，请重新输入。');
+    return;
+  }
+
+  // 更新会话状态
+  session.searchKeyword = searchKeyword;
+  session.currentPage = 0;
+  session.state = SessionState.SELECTING_DOMAIN_FOR_SET;
+  session.lastUpdate = Date.now();
+
+  try {
+    const { displayDomainsPage } = require('./utils');
+    const domains = await getConfiguredDomains();
+    await displayDomainsPage(ctx, domains, 0, searchKeyword);
+  } catch (error) {
+    await createSetDnsReply(ctx)(`搜索域名失败: ${error.message}`);
+  }
+}
+
 module.exports = {
   handleRecordContentInput,
   handleSubdomainForSet,
-  executeSetDns
+  executeSetDns,
+  handleSearchKeywordInputForSet
 };
