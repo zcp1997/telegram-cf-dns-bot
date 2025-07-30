@@ -27,9 +27,10 @@ async function getDnsRecord(domainName, getAllRecords = false) {
     });
 
     if (response.data.success && response.data.result.length > 0) {
-      // 确保每条记录都包含 zone_id 字段
+      // 确保每条记录都包含 zone_id 字段，支持 A、AAAA、CNAME、TXT 记录
+      const supportedTypes = ['A', 'AAAA', 'CNAME', 'TXT'];
       const records = response.data.result
-        .filter(record => record.type === 'A' || record.type === 'AAAA')
+        .filter(record => supportedTypes.includes(record.type))
         .map(record => ({
           ...record,
           zone_id: zoneId

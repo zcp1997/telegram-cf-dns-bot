@@ -93,17 +93,33 @@ function setupCallbacks(bot) {
 
     // 显示记录详情和操作选项
     let recordTypeDisplay = record.type;
+    let contentLabel = '内容';
+    
     if (record.type === 'A') {
-      recordTypeDisplay = 'IPv4 (A)';
+      recordTypeDisplay = '4️⃣ IPv4 (A)';
+      contentLabel = 'IP地址';
     } else if (record.type === 'AAAA') {
-      recordTypeDisplay = 'IPv6 (AAAA)';
+      recordTypeDisplay = '6️⃣ IPv6 (AAAA)';
+      contentLabel = 'IP地址';
+    } else if (record.type === 'CNAME') {
+      recordTypeDisplay = '🔗 CNAME';
+      contentLabel = '目标域名';
+    } else if (record.type === 'TXT') {
+      recordTypeDisplay = '📄 TXT';
+      contentLabel = '文本内容';
     }
 
-    const recordDetails =
+    let recordDetails =
       `域名: ${record.name}\n` +
-      `IP地址: ${record.content}\n` +
-      `类型: ${recordTypeDisplay}\n` +
-      `代理状态: ${record.proxied ? '已启用' : '未启用'}`;
+      `${contentLabel}: ${record.content}\n` +
+      `类型: ${recordTypeDisplay}\n`;
+    
+    // 只对支持代理的记录类型显示代理状态
+    if (record.type === 'A' || record.type === 'AAAA' || record.type === 'CNAME') {
+      recordDetails += `代理状态: ${record.proxied ? '已启用' : '未启用'}`;
+    } else {
+      recordDetails += `代理状态: 不支持`;
+    }
 
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
@@ -206,22 +222,44 @@ function setupCallbacks(bot) {
     session.state = SessionState.WAITING_UPDATE_CHOICE;
 
     await ctx.answerCbQuery();
+    
+    const record = session.selectedRecord;
+    let contentLabel = '当前内容';
+    let updateContentLabel = '🔄 修改内容';
+    
+    if (record.type === 'A' || record.type === 'AAAA') {
+      contentLabel = '当前IP';
+      updateContentLabel = '🔄 修改IP地址';
+    } else if (record.type === 'CNAME') {
+      contentLabel = '当前目标';
+      updateContentLabel = '🔄 修改目标域名';
+    } else if (record.type === 'TXT') {
+      contentLabel = '当前文本';
+      updateContentLabel = '🔄 修改文本内容';
+    }
+    
+    let messageText = `请选择要修改的内容:\n\n` +
+      `域名: ${record.name}\n` +
+      `${contentLabel}: ${record.content}\n`;
+    
+    // 构建按钮
+    const buttons = [[{ text: updateContentLabel, callback_data: 'dns_update_ip' }]];
+    
+    // 只对支持代理的记录类型显示代理状态和相关按钮
+    if (record.type === 'A' || record.type === 'AAAA' || record.type === 'CNAME') {
+      messageText += `当前代理状态: ${record.proxied ? '已启用' : '未启用'}`;
+      buttons[0].push({ text: '🔁 修改代理状态', callback_data: 'dns_update_proxy_only' });
+    } else {
+      messageText += `代理状态: 不支持`;
+    }
+    
+    buttons.push([{ text: '取消操作', callback_data: 'cancel_update_dns' }]);
+    
     await createGetDnsReply(ctx)(
-      `请选择要修改的内容:\n\n` +
-      `域名: ${session.selectedRecord.name}\n` +
-      `当前IP: ${session.selectedRecord.content}\n` +
-      `当前代理状态: ${session.selectedRecord.proxied ? '已启用' : '未启用'}`,
+      messageText,
       {
         reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '🔄 修改IP地址', callback_data: 'dns_update_ip' },
-              { text: '🔁 修改代理状态', callback_data: 'dns_update_proxy_only' }
-            ],
-            [
-              { text: '取消操作', callback_data: 'cancel_update_dns' }
-            ]
-          ]
+          inline_keyboard: buttons
         }
       }
     );
@@ -243,11 +281,34 @@ function setupCallbacks(bot) {
     session.lastUpdate = Date.now();
 
     await ctx.answerCbQuery();
+    
+    const record = session.selectedRecord;
+    let promptMessage = '';
+    let currentLabel = '当前内容';
+    
+    if (record.type === 'A') {
+      promptMessage = `请输入 ${record.name} 的新IPv4地址。\n` +
+        `${currentLabel}: ${record.content}\n` +
+        `例如：192.168.1.1`;
+    } else if (record.type === 'AAAA') {
+      promptMessage = `请输入 ${record.name} 的新IPv6地址。\n` +
+        `${currentLabel}: ${record.content}\n` +
+        `例如：2001:db8::1`;
+    } else if (record.type === 'CNAME') {
+      promptMessage = `请输入 ${record.name} 的新目标域名。\n` +
+        `${currentLabel}: ${record.content}\n` +
+        `例如：example.com`;
+    } else if (record.type === 'TXT') {
+      promptMessage = `请输入 ${record.name} 的新文本内容。\n` +
+        `${currentLabel}: ${record.content}\n` +
+        `例如：v=spf1 include:_spf.google.com ~all`;
+    } else {
+      promptMessage = `请输入 ${record.name} 的新内容。\n` +
+        `${currentLabel}: ${record.content}`;
+    }
+    
     await createGetDnsReply(ctx)(
-      `请输入 ${session.selectedRecord.name} 的新IP地址。\n` +
-      `当前IP: ${session.selectedRecord.content}\n` +
-      `支持IPv4（例如：192.168.1.1）\n` +
-      `或IPv6（例如：2001:db8::1）`,
+      promptMessage,
       {
         reply_markup: {
           inline_keyboard: [[
@@ -728,7 +789,7 @@ function setupCallbacks(bot) {
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
       '请输入要搜索的域名关键字：\n\n' +
-      '例如：输入 "example" 可以找到所有包含 "example" 的域名。',
+      '例如：输入 "eu.org" 可以找到所有包含 "eu.org" 的域名。',
       {
         reply_markup: {
           inline_keyboard: [[

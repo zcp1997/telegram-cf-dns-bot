@@ -1,27 +1,26 @@
 const { userSessions, SessionState } = require('../core/session');
-const { validateIpAddress } = require('../../services/validation');
+const { validateDnsRecordContent } = require('../../services/validation');
 const { trackGetDnsMessage, createGetDnsReply, queryDomainRecords, displayDomainsPage } = require('./utils');
 const { getConfiguredDomains } = require('../../utils/domain');
 
-// 处理新IP地址输入
+// 处理新内容输入（IP地址、域名或文本）
 async function handleDnsUpdateIpInput(ctx, session) {
   trackGetDnsMessage(ctx);
-  const ipAddress = ctx.message.text.trim();
+  const inputContent = ctx.message.text.trim();
+  const record = session.selectedRecord;
 
-  const validationResult = validateIpAddress(ipAddress);
+  // 根据记录类型验证输入内容
+  const validationResult = validateDnsRecordContent(inputContent, record.type);
   if (!validationResult.success) {
     await createGetDnsReply(ctx)(validationResult.message);
     return;
   }
 
-  const recordType = validationResult.type;
-  const record = session.selectedRecord;
-
-  // 检查IP类型是否与记录类型匹配
-  if (record.type !== recordType) {
+  // 对于IP记录，检查IP类型是否与记录类型匹配
+  if ((record.type === 'A' || record.type === 'AAAA') && record.type !== validationResult.type) {
     await createGetDnsReply(ctx)(
-      `输入的IP类型 (${recordType}) 与记录类型 (${record.type}) 不匹配。\n` +
-      `请输入正确类型的IP地址。`
+      `输入的IP类型 (${validationResult.type}) 与记录类型 (${record.type}) 不匹配。\n` +
+      `请输入正确类型的${record.type === 'A' ? 'IPv4' : 'IPv6'}地址。`
     );
     return;
   }
@@ -34,8 +33,52 @@ async function handleDnsUpdateIpInput(ctx, session) {
     return;
   }
 
-  session.newIpAddress = ipAddress;
+  session.newIpAddress = inputContent; // 保持变量名不变，但现在可以是IP、域名或文本
+  
+  // TXT记录不支持代理，直接更新
+  if (record.type === 'TXT') {
+    session.state = SessionState.WAITING_NEW_PROXY;
+    
+    // 直接执行更新，TXT记录不需要选择代理状态
+    const { updateDnsRecord } = require('../../services/cloudflare');
+    
+    await createGetDnsReply(ctx)(`正在更新 ${record.name} 的TXT记录...`);
+    
+    try {
+      await updateDnsRecord(
+        record.zone_id,
+        record.id,
+        record.name,
+        inputContent,
+        record.type,
+        false, // TXT记录不支持代理
+        record
+      );
+      await ctx.reply(`DNS记录已成功更新: ${record.name}`);
+      const { deleteGetDnsProcessMessages } = require('./utils');
+      await deleteGetDnsProcessMessages(ctx);
+    } catch (error) {
+      let errorMessage = `更新过程中发生错误: ${error.message}`;
+      if (error.response) {
+        errorMessage += ` (状态码: ${error.response.status})`;
+      }
+      await ctx.reply(errorMessage);
+      console.error('更新DNS记录时出错:', error);
+    }
+    
+    userSessions.delete(ctx.chat.id);
+    return;
+  }
+  
+  // 对于支持代理的记录类型，询问代理设置
   session.state = SessionState.WAITING_NEW_PROXY;
+
+  let contentTypeLabel = '内容';
+  if (record.type === 'A' || record.type === 'AAAA') {
+    contentTypeLabel = 'IP地址';
+  } else if (record.type === 'CNAME') {
+    contentTypeLabel = '目标域名';
+  }
 
   await createGetDnsReply(ctx)(
     `是否为 ${record.name} 启用 Cloudflare 代理？\n\n` +

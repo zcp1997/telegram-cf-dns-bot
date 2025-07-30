@@ -106,8 +106,103 @@ function validateIpAddress(ip) {
   };
 }
 
+/**
+ * 验证域名格式（用于CNAME记录）
+ */
+function validateDomainName(domain) {
+  if (!domain) {
+    return {
+      success: false,
+      message: '域名不能为空'
+    };
+  }
+
+  // 基本的域名格式验证
+  const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+  
+  if (!domainRegex.test(domain)) {
+    return {
+      success: false,
+      message: '请输入有效的域名格式（如：example.com）'
+    };
+  }
+
+  // 检查域名长度
+  if (domain.length > 253) {
+    return {
+      success: false,
+      message: '域名长度不能超过253个字符'
+    };
+  }
+
+  return {
+    success: true,
+    type: 'CNAME'
+  };
+}
+
+/**
+ * 验证TXT记录内容
+ */
+function validateTxtRecord(content) {
+  if (!content) {
+    return {
+      success: false,
+      message: 'TXT记录内容不能为空'
+    };
+  }
+
+  // TXT记录内容长度限制（单个字符串最多255字符，总长度最多65535字符）
+  if (content.length > 65535) {
+    return {
+      success: false,
+      message: 'TXT记录内容长度不能超过65535个字符'
+    };
+  }
+
+  // 检查是否包含不允许的字符（基本检查）
+  // TXT记录可以包含大部分字符，这里只做基本验证
+  return {
+    success: true,
+    type: 'TXT'
+  };
+}
+
+/**
+ * 验证DNS记录内容（通用函数）
+ */
+function validateDnsRecordContent(content, recordType) {
+  if (!content) {
+    return {
+      success: false,
+      message: '记录内容不能为空'
+    };
+  }
+
+  switch (recordType) {
+    case 'A':
+    case 'AAAA':
+      return validateIpAddress(content);
+    
+    case 'CNAME':
+      return validateDomainName(content);
+    
+    case 'TXT':
+      return validateTxtRecord(content);
+    
+    default:
+      return {
+        success: false,
+        message: `不支持的记录类型: ${recordType}`
+      };
+  }
+}
+
 module.exports = {
   validateCloudflareConfig,
   validateDomainConfig,
-  validateIpAddress
+  validateIpAddress,
+  validateDomainName,
+  validateTxtRecord,
+  validateDnsRecordContent
 }; 

@@ -44,16 +44,33 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
 
   // 创建记录按钮
   const recordButtons = pageRecords.map((record, index) => {
-    // 根据记录类型显示更友好的描述
+    // 根据记录类型显示更友好的描述和图标
     let typeDisplay = record.type;
+    let typeIcon = '📝';
+    
     if (record.type === 'A') {
       typeDisplay = 'IPv4';
+      typeIcon = '4️⃣';
     } else if (record.type === 'AAAA') {
       typeDisplay = 'IPv6';
+      typeIcon = '6️⃣';
+    } else if (record.type === 'CNAME') {
+      typeDisplay = 'CNAME';
+      typeIcon = '🔗';
+    } else if (record.type === 'TXT') {
+      typeDisplay = 'TXT';
+      typeIcon = '📄';
     }
 
-    // 创建按钮文本
-    const buttonText = `${record.name} [${typeDisplay}] ${record.proxied ? '🟢' : '🔴'}`;
+    // 创建按钮文本，对于CNAME和TXT记录，代理状态显示可能不适用
+    let proxyStatus = '';
+    if (record.type === 'A' || record.type === 'AAAA' || record.type === 'CNAME') {
+      proxyStatus = record.proxied ? '🟢' : '🔴';
+    } else {
+      proxyStatus = '⚪'; // TXT记录不支持代理
+    }
+
+    const buttonText = `${record.name} [${typeIcon} ${typeDisplay}] ${proxyStatus}`;
 
     // 使用索引而不是完整的ID和名称，将记录索引保存在会话中
     session.pageRecordIndices = session.pageRecordIndices || {};
@@ -95,7 +112,8 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
   const messageText =
     `${session.domain} 的DNS记录 (第${startIdx + 1}条-第${endIdx}条/共${session.dnsRecords.length}条记录):\n\n` +
     `点击记录可以更新或删除。\n\n` +
-    `🟢=已代理 🔴=未代理`;
+    `记录类型: 4️⃣IPv4 6️⃣IPv6 🔗CNAME 📄TXT\n` +
+    `代理状态: 🟢已代理 🔴未代理 ⚪不支持`;
 
   await createGetDnsReply(ctx)(
     messageText,
