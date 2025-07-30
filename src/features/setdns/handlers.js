@@ -15,7 +15,12 @@ async function handleRecordContentInput(ctx, session) {
     return;
   }
 
-  session.recordContent = inputContent;
+  // 对于CNAME记录，使用验证后清理的域名
+  if (recordType === 'CNAME' && validationResult.domain) {
+    session.recordContent = validationResult.domain;
+  } else {
+    session.recordContent = inputContent;
+  }
   
   // TXT记录不支持代理，直接设置
   if (recordType === 'TXT') {

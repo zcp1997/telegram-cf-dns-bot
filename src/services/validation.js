@@ -108,6 +108,7 @@ function validateIpAddress(ip) {
 
 /**
  * 验证域名格式（用于CNAME记录）
+ * 使用Node.js内置的URL模块和更严格的验证规则
  */
 function validateDomainName(domain) {
   if (!domain) {
@@ -117,27 +118,119 @@ function validateDomainName(domain) {
     };
   }
 
-  // 基本的域名格式验证
-  const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
-  
-  if (!domainRegex.test(domain)) {
+  // 去除前后空格并转为小写
+  const cleanDomain = domain.trim().toLowerCase();
+
+  // 检查域名长度
+  if (cleanDomain.length === 0) {
     return {
       success: false,
-      message: '请输入有效的域名格式（如：example.com）'
+      message: '域名不能为空'
     };
   }
 
-  // 检查域名长度
-  if (domain.length > 253) {
+  if (cleanDomain.length > 253) {
     return {
       success: false,
       message: '域名长度不能超过253个字符'
     };
   }
 
+  // 检查是否包含无效字符
+  if (cleanDomain.includes('..') || cleanDomain.startsWith('.') || cleanDomain.endsWith('.')) {
+    return {
+      success: false,
+      message: '域名格式无效：不能包含连续的点号，不能以点号开头或结尾'
+    };
+  }
+
+  // 使用Node.js内置的URL模块验证域名
+  try {
+    // 构造一个URL来验证域名格式
+    const testUrl = new URL(`http://${cleanDomain}`);
+    
+    // 验证主机名是否与输入的域名一致
+    if (testUrl.hostname !== cleanDomain) {
+      return {
+        success: false,
+        message: '域名格式无效：包含非法字符'
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: '请输入有效的域名格式（如：example.com、subdomain.example.org）'
+    };
+  }
+
+  // 验证域名的各个部分
+  const parts = cleanDomain.split('.');
+  
+  // 至少需要两个部分（如：example.com）
+  if (parts.length < 2) {
+    return {
+      success: false,
+      message: '域名必须包含至少一个点号（如：example.com）'
+    };
+  }
+
+  // 验证每个部分
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    
+    // 每个部分不能为空
+    if (part.length === 0) {
+      return {
+        success: false,
+        message: '域名的各个部分不能为空'
+      };
+    }
+    
+    // 每个部分长度不能超过63个字符
+    if (part.length > 63) {
+      return {
+        success: false,
+        message: `域名的每个部分不能超过63个字符，"${part}"过长`
+      };
+    }
+    
+    // 每个部分不能以连字符开头或结尾
+    if (part.startsWith('-') || part.endsWith('-')) {
+      return {
+        success: false,
+        message: `域名的每个部分不能以连字符开头或结尾："${part}"`
+      };
+    }
+    
+    // 验证字符：只能包含字母、数字和连字符
+    if (!/^[a-z0-9-]+$/.test(part)) {
+      return {
+        success: false,
+        message: `域名只能包含字母、数字和连字符："${part}"包含无效字符`
+      };
+    }
+  }
+
+  // 验证顶级域名（最后一个部分）
+  const tld = parts[parts.length - 1];
+  if (!/^[a-z]+$/.test(tld)) {
+    return {
+      success: false,
+      message: `顶级域名只能包含字母："${tld}"`
+    };
+  }
+
+  if (tld.length < 2) {
+    return {
+      success: false,
+      message: `顶级域名至少需要2个字符："${tld}"`
+    };
+  }
+
   return {
     success: true,
-    type: 'CNAME'
+    type: 'CNAME',
+    domain: cleanDomain
   };
 }
 
