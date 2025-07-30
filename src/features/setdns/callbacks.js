@@ -1,6 +1,7 @@
 const { userSessions, SessionState } = require('../core/session');
 const { createOrUpdateDns } = require('../../services/cloudflare');
 const { trackSetDnsMessage, createSetDnsReply, deleteSetDnsProcessMessages } = require('./utils');
+const { executeSetDns } = require('./handlers');
 
 function setupCallbacks(bot) {
   
@@ -26,31 +27,13 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_PROXY) {
+      await ctx.answerCbQuery('会话已过期');
       return;
     }
 
-    await ctx.editMessageText(
-      `正在处理: ${session.domain} -> ${session.ipAddress} ` +
-      `(类型: ${session.recordType}, 已启用代理)`
-    );
-
-    try {
-      const result = await createOrUpdateDns(
-        session.domain,
-        session.ipAddress,
-        session.recordType,
-        true
-      );
-      // 先发送成功消息
-      await ctx.reply(result.message);
-
-      // 然后删除之前的所有消息
-      await deleteSetDnsProcessMessages(ctx, ctx.callbackQuery.message.message_id);
-    } catch (error) {
-      await ctx.reply(`处理过程中发生错误: ${error.message}`);
-    }
-
-    userSessions.delete(chatId);
+    session.proxied = true;
+    await ctx.answerCbQuery();
+    await executeSetDns(ctx, session);
   });
 
   bot.action('proxy_no', async (ctx) => {
@@ -58,29 +41,13 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_PROXY) {
+      await ctx.answerCbQuery('会话已过期');
       return;
     }
 
-    await ctx.editMessageText(
-      `正在处理: ${session.domain} -> ${session.ipAddress} ` +
-      `(类型: ${session.recordType}, 未启用代理)`
-    );
-
-    try {
-      const result = await createOrUpdateDns(
-        session.domain,
-        session.ipAddress,
-        session.recordType,
-        false
-      );
-      await ctx.reply(result.message);
-
-      await deleteSetDnsProcessMessages(ctx, ctx.callbackQuery.message.message_id);
-    } catch (error) {
-      await ctx.reply(`处理过程中发生错误: ${error.message}`);
-    }
-
-    userSessions.delete(chatId);
+    session.proxied = false;
+    await ctx.answerCbQuery();
+    await executeSetDns(ctx, session);
   });
 
   // 处理设置DNS的域名选择
@@ -100,8 +67,12 @@ function setupCallbacks(bot) {
     await ctx.answerCbQuery();
     await createSetDnsReply(ctx)(
       `已选择域名: ${rootDomain}\n\n` +
-      `请输入子域名前缀（如：www），或直接发送 "." 设置根域名。\n\n` +
-      `例如：输入 "www" 将设置 www.${rootDomain}`,
+      `请输入要设置DNS记录的具体域名，或直接发送 "." 设置根域名。\n\n` +
+      `支持的记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT\n\n` +
+      `示例：\n` +
+      `• 输入 "www" → 设置 www.${rootDomain}\n` +
+      `• 输入 "api" → 设置 api.${rootDomain}\n` +
+      `• 输入 "." → 设置 ${rootDomain}`,
       {
         reply_markup: {
           inline_keyboard: [[
@@ -126,13 +97,69 @@ function setupCallbacks(bot) {
 
     // 直接使用根域名
     session.domain = session.rootDomain;
-    session.state = SessionState.WAITING_IP;
+    session.state = SessionState.SELECTING_RECORD_TYPE_FOR_SET;
 
     await ctx.answerCbQuery();
     await createSetDnsReply(ctx)(
-      `请输入 ${session.domain} 的IP地址。\n` +
-      '支持IPv4（例如：192.168.1.1）\n' +
-      '或IPv6（例如：2001:db8::1）',
+      `📋 请选择要为 ${session.rootDomain} 设置的DNS记录类型：\n\n` +
+      `4️⃣ A记录 - IPv4地址（如：192.168.1.1）\n` +
+      `6️⃣ AAAA记录 - IPv6地址（如：2001:db8::1）\n` +
+      `🔗 CNAME记录 - 域名别名（如：example.com）\n` +
+      `📄 TXT记录 - 文本记录（如：验证码、SPF等）`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '4️⃣ A记录 (IPv4)', callback_data: 'select_record_type_A' },
+              { text: '6️⃣ AAAA记录 (IPv6)', callback_data: 'select_record_type_AAAA' }
+            ],
+            [
+              { text: '🔗 CNAME记录', callback_data: 'select_record_type_CNAME' },
+              { text: '📄 TXT记录', callback_data: 'select_record_type_TXT' }
+            ],
+            [
+              { text: '取消操作', callback_data: 'cancel_setdns' }
+            ]
+          ]
+        }
+      }
+    );
+  });
+
+  // 处理记录类型选择
+  bot.action(/^select_record_type_(A|AAAA|CNAME|TXT)$/, async (ctx) => {
+    const chatId = ctx.chat.id;
+    const session = userSessions.get(chatId);
+    const recordType = ctx.match[1];
+
+    if (!session || session.state !== SessionState.SELECTING_RECORD_TYPE_FOR_SET) {
+      await ctx.answerCbQuery('会话已过期');
+      return;
+    }
+
+    session.recordType = recordType;
+    session.state = SessionState.WAITING_RECORD_CONTENT;
+
+    let promptMessage = '';
+    let examples = '';
+    
+    if (recordType === 'A') {
+      promptMessage = `请输入 ${session.domain} 的IPv4地址：`;
+      examples = `例如：192.168.1.1 或 8.8.8.8`;
+    } else if (recordType === 'AAAA') {
+      promptMessage = `请输入 ${session.domain} 的IPv6地址：`;
+      examples = `例如：2001:db8::1 或 2001:4860:4860::8888`;
+    } else if (recordType === 'CNAME') {
+      promptMessage = `请输入 ${session.domain} 的目标域名：`;
+      examples = `例如：example.com 或 www.google.com`;
+    } else if (recordType === 'TXT') {
+      promptMessage = `请输入 ${session.domain} 的TXT记录内容：`;
+      examples = `例如：v=spf1 include:_spf.google.com ~all\n或：google-site-verification=xxxxxx`;
+    }
+
+    await ctx.answerCbQuery();
+    await createSetDnsReply(ctx)(
+      `📝 ${promptMessage}\n\n${examples}`,
       {
         reply_markup: {
           inline_keyboard: [[

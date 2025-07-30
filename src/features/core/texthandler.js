@@ -1,5 +1,5 @@
 const { userSessions, SessionState } = require('../core/session');
-const { handleIpInput, handleSubdomainForSet } = require('../../features/setdns/handlers');
+const { handleRecordContentInput, handleSubdomainForSet } = require('../../features/setdns/handlers');
 const { handleSubdomainForDDNS, handleIntervalForDDNS } = require('../../features/ddns/handlers');
 const { handleSubdomainForDelete } = require('../../features/deldns/handlers');
 const { handleDnsUpdateIpInput, handleSubdomainInput, handleSearchKeywordInput } = require('../../features/getdns/handlers');
@@ -19,9 +19,9 @@ function setupTextHandler(bot) {
 
     // 统一的状态路由
     switch (session.state) {
-      // setdns/deldns 相关状态
-      case SessionState.WAITING_IP:
-        await handleIpInput(ctx, session);
+      // setdns 相关状态
+      case SessionState.WAITING_RECORD_CONTENT:
+        await handleRecordContentInput(ctx, session);
         break;
       case SessionState.WAITING_SUBDOMAIN_FOR_SET:
         await handleSubdomainForSet(ctx, session);
@@ -45,6 +45,11 @@ function setupTextHandler(bot) {
       case SessionState.WAITING_SEARCH_KEYWORD_FOR_QUERY:
       case SessionState.WAITING_SEARCH_KEYWORD_FOR_ALL:
         await handleSearchKeywordInput(ctx, session);
+        break;
+
+      // 处理记录类型选择状态（用户应该使用按钮而不是文本输入）
+      case SessionState.SELECTING_RECORD_TYPE_FOR_SET:
+        await ctx.reply('请使用按钮选择DNS记录类型，而不是输入文本。');
         break;
 
       // 新增：处理更新选择状态（用户应该使用按钮而不是文本输入）

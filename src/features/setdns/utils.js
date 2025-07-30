@@ -2,7 +2,7 @@ const { trackContextMessage, createTrackedReply, deleteProcessMessages } = requi
 
 const command = {
   command: 'setdns',
-  description: '添加/更新DNS记录'
+  description: '设置DNS记录 (A/AAAA/CNAME/TXT)'
 };
 
 // 创建命令特定的跟踪函数
