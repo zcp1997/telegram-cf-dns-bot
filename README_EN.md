@@ -1,13 +1,15 @@
 # Cloudflare DNS Manager
 
-A Telegram Bot-based interactive Cloudflare DNS record management tool, supporting multi-domain management for easily adding, updating, deleting, and querying domain A or AAAA records .
+A Telegram Bot-based interactive Cloudflare DNS record management tool, supporting multi-domain management for easily adding, updating, deleting, and querying multiple DNS record types (A, AAAA, CNAME, TXT).
 
 ## Features
 
 - 🔒 User whitelist control
-- 🌐 Multi-domain management
-- 📝 CRUD operations for DNS records
+- 🌐 Multi-domain management with intelligent pagination
+- 📝 Comprehensive DNS record management (A/AAAA/CNAME/TXT)
+- 🔍 Domain search functionality for quick domain targeting
 - 🔄 DDNS (Dynamic DNS) automatic IP updates
+- ✅ Strict input validation ensuring correct DNS record formats
 - 🐳 Docker containerized deployment
 - 🤖 Telegram Bot interactive interface
 
@@ -119,11 +121,20 @@ docker compose up -d
 
 ### DNS Record Management
 
-- `/setdns` - Add or update DNS records (supports A, AAAA, CNAME, TXT, etc.)
-- `/getdns` - Query DNS records for a specific subdomain
-- `/getdnsall` - Query all DNS records under a root domain
-- `/deldns` - Delete specified DNS records
-- `/dnschangelogs` - Query DNS change logs
+- `/setdns` - Set DNS records, supporting four types:
+  - 🌐 **A Records** (IPv4 addresses): Point domain to IPv4 address
+  - 🌐 **AAAA Records** (IPv6 addresses): Point domain to IPv6 address
+  - 🔗 **CNAME Records** (Domain alias): Point domain to another domain
+  - 📄 **TXT Records** (Text records): Used for verification, SPF, etc.
+- `/getdns` - Query DNS records for a specific domain (supports A/AAAA/CNAME/TXT)
+- `/getdnsall` - Query all DNS records under a domain (supports A/AAAA/CNAME/TXT)
+- `/deldns` - Delete specified DNS records (supports A/AAAA/CNAME/TXT)
+- `/dnschangelogs` - View DNS change logs
+
+#### 🔍 Smart Domain Management
+- **Pagination**: Automatically paginate when managing large numbers of domains
+- **Keyword Search**: Quickly search through domain lists with fuzzy matching
+- **Smart Validation**: Automatically validate input formats to ensure DNS record correctness
 
 ### DDNS (Dynamic DNS) Functions
 
@@ -136,6 +147,22 @@ docker compose up -d
 
 - `/listusers` - Display current whitelist users (admin only)
 - `/zonemap` - Display domain to Zone ID mapping (admin only)
+
+## Usage Examples
+
+### DNS Record Setup Process
+1. Send `/setdns` command
+2. Select target domain from the list (supports pagination and keyword search)
+3. Enter specific domain or subdomain
+4. Choose DNS record type (A/AAAA/CNAME/TXT)
+5. Enter corresponding record content (IP address, target domain, or text)
+6. Choose whether to enable Cloudflare proxy (A/AAAA/CNAME only)
+
+### DNS Record Type Descriptions
+- **A Record**: Enter IPv4 address, e.g., `192.168.1.1`
+- **AAAA Record**: Enter IPv6 address, e.g., `2001:db8::1`
+- **CNAME Record**: Enter target domain, e.g., `example.com` (automatic domain format validation)
+- **TXT Record**: Enter text content, e.g., `v=spf1 include:_spf.google.com ~all`
 
 ## Configuration Details
 

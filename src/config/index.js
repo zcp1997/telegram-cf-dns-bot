@@ -39,7 +39,7 @@ const CLEAN_SESSION_INTERVAL = 5 * 60 * 1000
 const DNS_RECORDS_PAGE_SIZE = 5
 
 // 域名列表分页大小
-const DOMAINS_PAGE_SIZE = 2
+const DOMAINS_PAGE_SIZE = 5
 
 // 缓存有效期1小时
 const CACHE_TTL = 3600000;

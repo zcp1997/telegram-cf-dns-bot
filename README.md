@@ -2,14 +2,16 @@
 
 [英文文档](README_EN.md)
 
-这是一个基于 Telegram Bot 的 Cloudflare DNS 交互式记录管理工具，支持多域名管理，可以方便地添加、更新、删除和查询域名的 A 记录和 AAAA 记录。
+这是一个基于 Telegram Bot 的 Cloudflare DNS 交互式记录管理工具，支持多域名管理，可以方便地添加、更新、删除和查询多种DNS记录类型（A、AAAA、CNAME、TXT）。
 
 ## 功能特点
 
 - 🔒 用户白名单控制
-- 🌐 支持多域名管理
-- 📝 DNS 记录的增删改查
+- 🌐 支持多域名管理，智能分页显示
+- 📝 全面的DNS记录管理（A/AAAA/CNAME/TXT）
+- 🔍 域名搜索功能，快速定位目标域名
 - 🔄 支持DDNS自动动态域名解析
+- ✅ 严格的输入验证，确保DNS记录格式正确
 - 🐳 Docker 容器化部署
 - 🤖 Telegram Bot 交互界面
 
@@ -121,11 +123,20 @@ docker compose up -d
 
 ### DNS 记录管理
 
-- `/setdns` - 添加或更新DNS记录（支持A、AAAA、CNAME、TXT等记录类型）
-- `/getdns` - 查询特定子域名的DNS记录
-- `/getdnsall` - 查询根域名下所有DNS记录
-- `/deldns` - 删除指定的DNS记录
+- `/setdns` - 设置DNS记录，支持四种类型：
+  - 🌐 **A记录** (IPv4地址)：将域名指向IPv4地址
+  - 🌐 **AAAA记录** (IPv6地址)：将域名指向IPv6地址  
+  - 🔗 **CNAME记录** (域名别名)：将域名指向另一个域名
+  - 📄 **TXT记录** (文本记录)：用于验证、SPF等用途
+- `/getdns` - 查询特定域名的DNS记录（支持A/AAAA/CNAME/TXT）
+- `/getdnsall` - 查询域名下所有DNS记录（支持A/AAAA/CNAME/TXT）
+- `/deldns` - 删除指定的DNS记录（支持A/AAAA/CNAME/TXT）
 - `/dnschangelogs` - 查看DNS变更日志
+
+#### 🔍 智能域名管理
+- **分页显示**：当您管理大量域名时，系统自动分页显示，每页显示适量域名
+- **关键字搜索**：在域名列表中快速搜索，支持模糊匹配
+- **智能验证**：自动验证输入格式，确保DNS记录的正确性
 
 ### DDNS 动态域名功能
 
@@ -138,6 +149,22 @@ docker compose up -d
 
 - `/listusers` - 显示当前白名单用户列表（仅管理员可用）
 - `/zonemap` - 显示域名和Zone ID的映射关系（仅管理员可用）
+
+## 使用示例
+
+### 设置DNS记录流程
+1. 发送 `/setdns` 命令
+2. 从域名列表中选择目标域名（支持分页浏览和关键字搜索）
+3. 输入具体的域名或子域名
+4. 选择DNS记录类型（A/AAAA/CNAME/TXT）
+5. 输入相应的记录内容（IP地址、目标域名或文本）
+6. 选择是否启用Cloudflare代理（仅A/AAAA/CNAME支持）
+
+### DNS记录类型说明
+- **A记录**：输入IPv4地址，如 `192.168.1.1`
+- **AAAA记录**：输入IPv6地址，如 `2001:db8::1`
+- **CNAME记录**：输入目标域名，如 `example.com`（自动验证域名格式）
+- **TXT记录**：输入文本内容，如 `v=spf1 include:_spf.google.com ~all`
 
 ## 配置说明
 
