@@ -1,6 +1,6 @@
 {
     "name": "telegram-cf-dns-bot",
-    "version": "0.7.2",
+    "version": "1.0.0",
     "description": "Telegram bot for managing Cloudflare DNS records",
     "main": "src/index.js",
     "scripts": {

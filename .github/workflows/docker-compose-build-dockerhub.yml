@@ -16,6 +16,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
           
       - name: Extract image name from docker-compose.yml
         id: extract-image
@@ -35,21 +41,16 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           
-      - name: Build and push with Docker Compose
-        run: |
-          # 构建镜像
-          docker compose build
-          
-          # 获取构建的镜像ID
-          IMAGE_ID=$(docker images --format "{{.ID}}" | head -n 1)
-          
-          # 标记并推送镜像（使用latest标签和版本号标签）
-          docker tag $IMAGE_ID zcp970603/telegram-cf-dns-bot:latest
-          docker tag $IMAGE_ID zcp970603/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
-          
-          # 推送两个标签的镜像
-          docker push zcp970603/telegram-cf-dns-bot:latest
-          docker push zcp970603/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            zcp970603/telegram-cf-dns-bot:latest
+            zcp970603/telegram-cf-dns-bot:v${{ steps.get-version.outputs.version }}
 
       - name: Update Docker Hub Description
         uses: peter-evans/dockerhub-description@v3
@@ -58,4 +59,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: zcp970603/telegram-cf-dns-bot
           short-description: "A telegram bot can manage your cloudflare domain dns records "
-          readme-filepath: ./README.md      
+          readme-filepath: ./README.md

@@ -27,6 +27,8 @@
 
 ### 方式一：使用预构建镜像（推荐）
 
+预构建镜像支持 `linux/amd64` 和 `linux/arm64`，Apple Silicon Mac 会自动拉取 ARM64 镜像。
+
 1. 创建 `docker-compose.yml` 文件：
 
 ```yaml

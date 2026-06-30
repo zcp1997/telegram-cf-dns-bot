@@ -25,6 +25,8 @@ A Telegram Bot-based interactive Cloudflare DNS record management tool, supporti
 
 ### Method 1: Using Pre-built Image (Recommended)
 
+The pre-built image supports `linux/amd64` and `linux/arm64`, so Apple Silicon Macs automatically pull the ARM64 image.
+
 1. Create a `docker-compose.yml` file:
 
 ```yaml
