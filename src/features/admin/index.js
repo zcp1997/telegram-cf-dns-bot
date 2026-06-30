@@ -1,25 +1,37 @@
 const { getConfiguredDomains } = require('../../utils/domain');
 const { ALLOWED_CHAT_IDS, CF_API_TOKEN, EXCLUDE_DOMAINS } = require('../../config');
-const { helpButtons, commands, helpMessage } = require('./utils');
+const { commands, getHelpButtons, getHelpMessage, getLanguageButtons } = require('./utils');
 const { setupCallbacks } = require('./callbacks');
 const { getZoneIdForDomain } = require('../../utils/domain');
+const { getLanguage, t } = require('../../i18n');
 
 function setup(bot) {
   // 基础命令
   bot.command(commands.start_command.command, (ctx) => {
-    ctx.reply(helpMessage, {
+    ctx.reply(getHelpMessage(), {
       reply_markup: {
-        inline_keyboard: helpButtons
+        inline_keyboard: getHelpButtons()
       }
     });
   });
 
   bot.command(commands.help_command.command, (ctx) => {
-    ctx.reply(helpMessage, {
+    ctx.reply(getHelpMessage(), {
       reply_markup: {
-        inline_keyboard: helpButtons
+        inline_keyboard: getHelpButtons()
       }
     });
+  });
+
+  bot.command(commands.language_command.command, (ctx) => {
+    ctx.reply(
+      `${t('admin.language.current', { language: getLanguage() })}\n\n${t('admin.language.prompt')}`,
+      {
+        reply_markup: {
+          inline_keyboard: getLanguageButtons()
+        }
+      }
+    );
   });
 
   // 域名列表命令

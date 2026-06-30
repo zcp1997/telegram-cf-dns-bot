@@ -48,6 +48,8 @@ services:
       # - IN_CHINA=false
       # 可选参数：是否启用IPv6 DDNS更新 (true/false，默认为false)
       # - ENABLE_IPV6_DDNS=false
+      # 可选参数：Bot提示语言（zh-CN/en-US，默认自动推断，回退为zh-CN）
+      # - BOT_LANGUAGE=zh-CN
 
     volumes:
       - ./config:/app/config
@@ -119,6 +121,7 @@ docker compose up -d
 
 - `/start` - 启动机器人，显示欢迎信息和功能菜单
 - `/help` - 查看详细的帮助信息和使用指南
+- `/language` - 切换Bot提示语言（支持简体中文/English）
 - `/domains` - 列出所有可管理的域名列表
 
 ### DNS 记录管理

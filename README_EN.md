@@ -46,6 +46,8 @@ services:
       # - IN_CHINA=false
       # DDNS Optional Paramter：enable IPv6 DDNS update (default is false)
       # - ENABLE_IPV6_DDNS=false
+      # Optional: Bot prompt language (zh-CN/en-US, auto-detected by default, fallback is zh-CN)
+      # - BOT_LANGUAGE=en-US
 
     volumes:
       - ./config:/app/config 
@@ -117,6 +119,7 @@ docker compose up -d
 
 - `/start` - Start the bot and display welcome message with function menu
 - `/help` - View detailed help information and usage guide
+- `/language` - Switch bot prompt language (Simplified Chinese/English)
 - `/domains` - List all manageable domains
 
 ### DNS Record Management

@@ -24,6 +24,7 @@ const defaultLanguage = normalizeLanguage(
   process.env.LANGUAGE ||
   process.env.LANG
 );
+let currentLanguage = defaultLanguage;
 
 function interpolate(template, params = {}) {
   return template.replace(/\{(\w+)\}/g, (match, key) => (
@@ -31,7 +32,16 @@ function interpolate(template, params = {}) {
   ));
 }
 
-function t(key, params = {}, language = defaultLanguage) {
+function getLanguage() {
+  return currentLanguage;
+}
+
+function setLanguage(language) {
+  currentLanguage = normalizeLanguage(language);
+  return currentLanguage;
+}
+
+function t(key, params = {}, language = currentLanguage) {
   const normalizedLanguage = normalizeLanguage(language);
   const dictionary = dictionaries[normalizedLanguage] || dictionaries['zh-CN'];
   const template = dictionary[key] || dictionaries['zh-CN'][key] || key;
@@ -42,4 +52,6 @@ module.exports = {
   t,
   normalizeLanguage,
   defaultLanguage,
+  getLanguage,
+  setLanguage,
 };
