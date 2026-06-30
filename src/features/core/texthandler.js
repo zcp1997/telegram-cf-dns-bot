@@ -3,6 +3,7 @@ const { handleRecordContentInput, handleSubdomainForSet, handleSearchKeywordInpu
 const { handleSubdomainForDDNS, handleIntervalForDDNS } = require('../../features/ddns/handlers');
 const { handleSubdomainForDelete, handleSearchKeywordInputForDelete } = require('../../features/deldns/handlers');
 const { handleDnsUpdateIpInput, handleSubdomainInput, handleSearchKeywordInput } = require('../../features/getdns/handlers');
+const { handleDnsLogsSearchKeywordInput } = require('../../features/dnschangelogs/handlers');
 
 function setupTextHandler(bot) {
   bot.on('text', async (ctx) => {
@@ -69,6 +70,11 @@ function setupTextHandler(bot) {
         break;
       case SessionState.WAITING_INTERVAL_FOR_DDNS:
         await handleIntervalForDDNS(ctx, session);
+        break;
+
+      // dnschangelogs 相关状态
+      case SessionState.WAITING_DOMAIN_FOR_DNS_LOGS:
+        await handleDnsLogsSearchKeywordInput(ctx, session);
         break;
 
       default:

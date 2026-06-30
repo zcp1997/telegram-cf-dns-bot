@@ -33,7 +33,10 @@ const SessionState = {
   // command ddns
   SELECTING_DOMAIN_FOR_DDNS: 'SELECTING_DOMAIN_FOR_DDNS',
   WAITING_SUBDOMAIN_FOR_DDNS: 'WAITING_SUBDOMAIN_FOR_DDNS',
-  WAITING_INTERVAL_FOR_DDNS: 'WAITING_INTERVAL_FOR_DDNS'
+  WAITING_INTERVAL_FOR_DDNS: 'WAITING_INTERVAL_FOR_DDNS',
+
+  // command dnschangelogs
+  WAITING_DOMAIN_FOR_DNS_LOGS: 'WAITING_DOMAIN_FOR_DNS_LOGS'
 };
 
 function cleanupSessions() {
@@ -46,7 +49,10 @@ function cleanupSessions() {
 }
 
 // 启动定期清理
-setInterval(cleanupSessions, CLEAN_SESSION_INTERVAL);
+const cleanupTimer = setInterval(cleanupSessions, CLEAN_SESSION_INTERVAL);
+if (cleanupTimer.unref) {
+  cleanupTimer.unref();
+}
 
 // 添加DDNS会话存储
 const ddnsSessions = new Map();

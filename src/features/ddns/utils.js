@@ -2,11 +2,12 @@ const { userSessions } = require('../core/session');
 const { trackContextMessage, createTrackedReply, deleteProcessMessages } = require('../../utils/messageManager');
 const { getCurrentIPv4, getCurrentIPv6 } = require('../../utils/ip');
 const { startDDNS } = require('../../services/ddns');
+const { t } = require('../../i18n');
 
 const commands = [
-  { command: 'ddns', description: '设置自动DDNS' },
-  { command: 'ddnsstatus', description: '查看DDNS任务状态' },
-  { command: 'stopddns', description: '停止DDNS任务' },
+  { command: 'ddns', description: t('ddns.command.setup.description') },
+  { command: 'ddnsstatus', description: t('ddns.command.status.description') },
+  { command: 'stopddns', description: t('ddns.command.stop.description') },
 ];
 
 // 为数组添加命令引用
@@ -34,15 +35,12 @@ async function setupDDNS(ctx, session, interval) {
   
   try {
     // 发送初始状态消息
-    statusMessage = await ctx.reply(
-      `⏳ 正在启动DDNS配置...\n` +
-      `步骤1/3: 正在获取当前IP地址...`
-    );
+    statusMessage = await ctx.reply(t('ddns.setupStarting'));
 
     // 并行获取IPv4和IPv6
     const [ipv4Promise, ipv6Promise] = [
       getCurrentIPv4(),
-      getCurrentIPv6().catch(() => '不可用') // 如果获取IPv6失败，返回"不可用"
+      getCurrentIPv6().catch(() => t('ddns.ipv6Unavailable')) // 如果获取IPv6失败，返回"不可用"
     ];
     
     // 更新状态消息
@@ -50,9 +48,7 @@ async function setupDDNS(ctx, session, interval) {
       ctx.chat.id,
       statusMessage.message_id,
       null,
-      `⏳ 正在启动DDNS配置...\n` +
-      `步骤1/3: 正在获取当前IP地址...\n` +
-      `步骤2/3: 正在准备DDNS服务...`
+      t('ddns.setupPreparing')
     );
 
     // 等待IP获取完成
@@ -63,10 +59,7 @@ async function setupDDNS(ctx, session, interval) {
       ctx.chat.id,
       statusMessage.message_id,
       null,
-      `⏳ 正在启动DDNS配置...\n` +
-      `步骤1/3: IP地址获取成功 ✓\n` +
-      `步骤2/3: 准备DDNS服务 ✓\n` +
-      `步骤3/3: 正在启动DDNS服务...`
+      t('ddns.setupLaunching')
     );
     
     // 启动DDNS服务
@@ -77,14 +70,12 @@ async function setupDDNS(ctx, session, interval) {
       ctx.chat.id,
       statusMessage.message_id,
       null,
-      `✅ DDNS配置已完成！\n\n` +
-      `域名: ${session.domain}\n` +
-      `当前IPv4: ${currentIP}\n` +
-      `当前IPv6: ${currentIPv6}\n` +
-      `刷新间隔: ${interval}秒\n\n` +
-      `系统将自动检测IP变化并更新DNS记录。\n` +
-      `使用 /ddnsstatus 查看DDNS状态\n` +
-      `使用 /stopddns 停止DDNS任务`
+      t('ddns.setupComplete', {
+        domain: session.domain,
+        ipv4: currentIP,
+        ipv6: currentIPv6,
+        interval,
+      })
     );
 
     await deleteDDNSProcessMessages(ctx, statusMessage.message_id);
@@ -97,13 +88,13 @@ async function setupDDNS(ctx, session, interval) {
         ctx.chat.id,
         statusMessage.message_id,
         null,
-        `❌ DDNS配置失败: ${error.message}\n`
+        t('ddns.setupFailed', { message: error.message })
       ).catch(() => {
         // 如果编辑失败，发送新消息
-        ctx.reply(`❌ DDNS配置失败: ${error.message}`);
+        ctx.reply(t('ddns.setupFailed', { message: error.message }));
       });
     } else {
-      await ctx.reply(`❌ DDNS配置失败: ${error.message}`);
+      await ctx.reply(t('ddns.setupFailed', { message: error.message }));
     }
     userSessions.delete(ctx.chat.id);
   }
@@ -115,4 +106,4 @@ module.exports = {
   createDDNSTrackedReply,
   deleteDDNSProcessMessages,
   setupDDNS
-}; 
+};

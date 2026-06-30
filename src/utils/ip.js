@@ -1,5 +1,11 @@
 const axios = require('axios');
-const { IN_CHINA } = require('../config');
+const { IN_CHINA, DEBUG_DDNS } = require('../config');
+
+function debugDDNS(...args) {
+  if (DEBUG_DDNS) {
+    console.debug(...args);
+  }
+}
 /**
  * 获取当前IPv4地址
  * 使用多个IP获取服务，包括国内外服务，提高可靠性
@@ -33,7 +39,7 @@ async function getCurrentIPv4() {
   // 记录错误信息
   const errors = [];
 
-  console.info(`当前环境: ${IN_CHINA ? '中国大陆' : '海外'}, 将优先使用${IN_CHINA ? '国内' : '全球'}IP服务`);
+  debugDDNS(`当前环境: ${IN_CHINA ? '中国大陆' : '海外'}, 将优先使用${IN_CHINA ? '国内' : '全球'}IP服务`);
 
   // 依次尝试每个服务
   for (const service of ipServices) {
@@ -50,7 +56,7 @@ async function getCurrentIPv4() {
 
       // 验证IP格式
       if (ip && /^\d+\.\d+\.\d+\.\d+$/.test(ip)) {
-        console.info(`DDNS成功获取IPv4地址(来源:${service.name}):`, ip);
+        debugDDNS(`DDNS成功获取IPv4地址(来源:${service.name}):`, ip);
         return ip;
       } else {
         throw new Error(`返回的IP格式不正确: ${ip}`);
@@ -114,7 +120,7 @@ async function getCurrentIPv6() {
   // 记录错误信息
   const errors = [];
 
-  console.info(`IPv6检测 - 当前环境: ${IN_CHINA ? '中国大陆' : '海外'}, 将优先使用${IN_CHINA ? '国内' : '全球'}IP服务`);
+  debugDDNS(`IPv6检测 - 当前环境: ${IN_CHINA ? '中国大陆' : '海外'}, 将优先使用${IN_CHINA ? '国内' : '全球'}IP服务`);
 
   // 依次尝试每个服务
   for (const service of ipServices) {
@@ -131,7 +137,7 @@ async function getCurrentIPv6() {
 
       // 验证IPv6格式 (简单验证包含冒号的格式)
       if (ip && ip.includes(':') && /^[0-9a-fA-F:]+$/.test(ip)) {
-        console.info(`DDNS成功获取IPv6地址(来源:${service.name}):`, ip);
+        debugDDNS(`DDNS成功获取IPv6地址(来源:${service.name}):`, ip);
         return ip;
       } else {
         throw new Error(`返回的IPv6格式不正确: ${ip}`);

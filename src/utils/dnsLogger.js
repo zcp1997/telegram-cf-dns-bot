@@ -81,6 +81,44 @@ function getDnsLogs(date) {
 }
 
 /**
+ * 获取所有DNS操作日志，按时间戳倒序排列
+ * @returns {Array} - 日志条目数组
+ */
+function getAllDnsLogs() {
+  try {
+    const dates = getAvailableLogDates();
+    const logs = dates.flatMap(date => (
+      getDnsLogs(date).map(log => ({ date, ...log }))
+    ));
+
+    return logs.sort((a, b) => {
+      const timeA = moment(a.timestamp, 'YYYY-MM-DD HH:mm:ss');
+      const timeB = moment(b.timestamp, 'YYYY-MM-DD HH:mm:ss');
+      return timeB.valueOf() - timeA.valueOf();
+    });
+  } catch (error) {
+    console.error('获取全部DNS操作日志失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 按域名关键字模糊查询DNS操作日志
+ * @param {string} keyword - 域名关键字
+ * @returns {Array} - 匹配的日志条目数组
+ */
+function searchDnsLogsByDomain(keyword) {
+  const normalizedKeyword = String(keyword || '').trim().toLowerCase();
+  if (!normalizedKeyword) {
+    return [];
+  }
+
+  return getAllDnsLogs().filter(log => (
+    String(log.domain || '').toLowerCase().includes(normalizedKeyword)
+  ));
+}
+
+/**
  * 获取所有可用的日志日期
  * @returns {Array} - 日期数组 (YYYY-MM-DD)，按日期倒序排列
  */
@@ -104,5 +142,7 @@ function getAvailableLogDates() {
 module.exports = {
   logDnsOperation,
   getDnsLogs,
+  getAllDnsLogs,
+  searchDnsLogsByDomain,
   getAvailableLogDates
-}; 
+};

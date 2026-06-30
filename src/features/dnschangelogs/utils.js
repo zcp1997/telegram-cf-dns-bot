@@ -2,7 +2,7 @@ const { trackContextMessage, createTrackedReply, deleteProcessMessages } = requi
 
 const command = {
   command: 'dnschangelogs',
-  description: '查看DNS记录变更日志'
+  description: require('../../i18n').t('dnsLogs.command.description')
 };
 
 // 创建命令特定的跟踪函数
@@ -24,4 +24,4 @@ module.exports = {
   trackDnsLogsMessage,
   createDnsLogsReply,
   deleteDnsLogsProcessMessages
-}; 
+};

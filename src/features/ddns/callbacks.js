@@ -2,6 +2,7 @@
 const { userSessions, SessionState } = require('../core/session');
 const { trackDDNSMessage, createDDNSTrackedReply, deleteDDNSProcessMessages, setupDDNS } = require('./utils');
 const { stopDDNS, getAllDDNSTasks } = require('../../services/ddns');
+const { t } = require('../../i18n');
 
 function setupCallbacks(bot) {
 
@@ -12,7 +13,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.SELECTING_DOMAIN_FOR_DDNS) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -22,14 +23,12 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createDDNSTrackedReply(ctx)(
-      `已选择域名: ${rootDomain}\n\n` +
-      `请输入子域名前缀（如：www），或直接发送 "." 设置根域名。\n\n` +
-      `例如：输入 "www" 将设置 www.${rootDomain}`,
+      t('ddns.domainSelected', { domain: rootDomain }),
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: '设置根域名', callback_data: 'set_root_domain_ddns' },
-            { text: '取消操作', callback_data: 'cancel_ddns' }
+            { text: t('ddns.setRootDomain'), callback_data: 'set_root_domain_ddns' },
+            { text: t('common.cancelOperation'), callback_data: 'cancel_ddns' }
           ]]
         }
       }
@@ -44,7 +43,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_SUBDOMAIN_FOR_DDNS) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -54,17 +53,17 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createDDNSTrackedReply(ctx)(
-      `请输入 ${session.domain} 的DDNS刷新间隔（秒）。\n或选择预设事件间隔：`,
+      t('ddns.intervalPrompt', { domain: session.domain }),
       {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: '60秒', callback_data: 'ddns_interval_60' },
-              { text: '5分钟', callback_data: 'ddns_interval_300' },
-              { text: '10分钟', callback_data: 'ddns_interval_600' }
+              { text: t('ddns.interval60'), callback_data: 'ddns_interval_60' },
+              { text: t('ddns.interval300'), callback_data: 'ddns_interval_300' },
+              { text: t('ddns.interval600'), callback_data: 'ddns_interval_600' }
             ],
             [
-              { text: '取消操作', callback_data: 'cancel_ddns' }
+              { text: t('common.cancelOperation'), callback_data: 'cancel_ddns' }
             ]
           ]
         }
@@ -79,7 +78,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_INTERVAL_FOR_DDNS) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -92,7 +91,7 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     
     // 先编辑当前消息
-    await ctx.editMessageText('已取消DDNS设置操作。');
+    await ctx.editMessageText(t('ddns.cancelSetup'));
     
     // 获取当前回调消息的ID，以便在删除时排除它
     const currentMessageId = ctx.callbackQuery.message.message_id;
@@ -106,7 +105,7 @@ function setupCallbacks(bot) {
   // 取消停止DDNS
   bot.action('cancel_stop_ddns', async (ctx) => {
     await ctx.answerCbQuery();
-    await ctx.editMessageText('已取消停止DDNS操作。');
+    await ctx.editMessageText(t('ddns.cancelStop'));
     await deleteDDNSProcessMessages(ctx, ctx.callbackQuery.message.message_id);
   });
 
@@ -117,9 +116,9 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     if (result) {
-      await ctx.editMessageText(`已停止 ${domain} 的DDNS任务。`);
+      await ctx.editMessageText(t('ddns.stoppedTask', { domain }));
     } else {
-      await ctx.editMessageText(`未找到 ${domain} 的DDNS任务。`);
+      await ctx.editMessageText(t('ddns.taskNotFound', { domain }));
     }
 
     await deleteDDNSProcessMessages(ctx, ctx.callbackQuery.message.message_id);
@@ -137,7 +136,7 @@ function setupCallbacks(bot) {
     }
 
     await ctx.answerCbQuery();
-    await ctx.editMessageText(`已停止所有DDNS任务，共${stoppedCount}个。`);
+    await ctx.editMessageText(t('ddns.stoppedAllTasks', { count: stoppedCount }));
     await deleteDDNSProcessMessages(ctx, ctx.callbackQuery.message.message_id);
   });
 

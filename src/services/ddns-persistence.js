@@ -1,10 +1,17 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { ddnsSessions } = require('../features/core/session');
+const { DEBUG_DDNS } = require('../config');
 
 // 配置文件路径 - 使用固定路径
 const CONFIG_DIR = './config';
 const DDNS_CONFIG_FILE = path.join(CONFIG_DIR, 'ddns.json');
+
+function debugDDNS(...args) {
+  if (DEBUG_DDNS) {
+    console.debug(...args);
+  }
+}
 
 // 保存DDNS配置到文件
 async function saveDDNSConfig() {
@@ -26,7 +33,7 @@ async function saveDDNSConfig() {
     
     // 写入文件
     await fs.writeFile(DDNS_CONFIG_FILE, JSON.stringify(configs, null, 2));
-    console.log(`已保存${configs.length}个DDNS配置到 ${DDNS_CONFIG_FILE}`);
+    debugDDNS(`已保存${configs.length}个DDNS配置到 ${DDNS_CONFIG_FILE}`);
     return true;
   } catch (error) {
     console.error('保存DDNS配置失败:', error);
@@ -41,7 +48,7 @@ async function loadDDNSConfig(telegram) {
     try {
       await fs.access(DDNS_CONFIG_FILE);
     } catch (error) {
-      console.log('DDNS配置文件不存在，跳过加载');
+      debugDDNS('DDNS配置文件不存在，跳过加载');
       return [];
     }
     
@@ -49,7 +56,7 @@ async function loadDDNSConfig(telegram) {
     const data = await fs.readFile(DDNS_CONFIG_FILE, 'utf8');
     const configs = JSON.parse(data);
     
-    console.log(`从 ${DDNS_CONFIG_FILE} 加载了${configs.length}个DDNS配置`);
+    debugDDNS(`从 ${DDNS_CONFIG_FILE} 加载了${configs.length}个DDNS配置`);
     return configs;
   } catch (error) {
     console.error('加载DDNS配置失败:', error);
@@ -83,7 +90,7 @@ async function restoreDDNSTasks(telegram) {
     }
   }
   
-  console.log(`成功恢复了${restoredCount}/${configs.length}个DDNS任务`);
+  debugDDNS(`成功恢复了${restoredCount}/${configs.length}个DDNS任务`);
   return restoredCount;
 }
 
@@ -102,14 +109,14 @@ function setupAutoSave(intervalMinutes = 5) {
       saveDDNSConfig()
         .then(success => {
           if (success) {
-            console.log(`自动保存了${ddnsSessions.size}个DDNS配置`);
+            debugDDNS(`自动保存了${ddnsSessions.size}个DDNS配置`);
           }
         })
         .catch(err => console.error('自动保存DDNS配置失败:', err));
     }
   }, intervalMinutes * 60 * 1000);
   
-  console.log(`已设置每${intervalMinutes}分钟自动保存DDNS配置`);
+  debugDDNS(`已设置每${intervalMinutes}分钟自动保存DDNS配置`);
 }
 
 module.exports = {

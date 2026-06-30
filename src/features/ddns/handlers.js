@@ -1,5 +1,6 @@
 const { trackDDNSMessage, createDDNSTrackedReply, setupDDNS } = require('./utils');
 const { SessionState } = require('../core/session');
+const { t } = require('../../i18n');
 
 // 处理DDNS的子域名输入
 async function handleSubdomainForDDNS(ctx, session) {
@@ -11,17 +12,17 @@ async function handleSubdomainForDDNS(ctx, session) {
   session.state = SessionState.WAITING_INTERVAL_FOR_DDNS;
 
   await createDDNSTrackedReply(ctx)(
-    `请输入 ${session.domain} 的DDNS刷新间隔（秒）。\n或选择预设事件间隔：`,
+    t('ddns.intervalPrompt', { domain: session.domain }),
     {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '60秒', callback_data: 'ddns_interval_60' },
-            { text: '5分钟', callback_data: 'ddns_interval_300' },
-            { text: '10分钟', callback_data: 'ddns_interval_600' }
+            { text: t('ddns.interval60'), callback_data: 'ddns_interval_60' },
+            { text: t('ddns.interval300'), callback_data: 'ddns_interval_300' },
+            { text: t('ddns.interval600'), callback_data: 'ddns_interval_600' }
           ],
           [
-            { text: '取消操作', callback_data: 'cancel_ddns' }
+            { text: t('common.cancelOperation'), callback_data: 'cancel_ddns' }
           ]
         ]
       }
@@ -38,7 +39,7 @@ async function handleIntervalForDDNS(ctx, session) {
   if (intervalText !== '') {
     const parsedInterval = parseInt(intervalText);
     if (isNaN(parsedInterval) || parsedInterval < 10) {
-      await ctx.reply('请输入有效的间隔时间，最小为10秒。');
+      await ctx.reply(t('ddns.invalidInterval'));
       return;
     }
     interval = parsedInterval;

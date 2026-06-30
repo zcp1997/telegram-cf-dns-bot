@@ -132,6 +132,7 @@ docker compose up -d
 - `/getdnsall` - 查询域名下所有DNS记录（支持A/AAAA/CNAME/TXT）
 - `/deldns` - 删除指定的DNS记录（支持A/AAAA/CNAME/TXT）
 - `/dnschangelogs` - 查看DNS变更日志
+- `/dnschangelogs 域名关键字` - 按域名模糊查询DNS变更日志，例如 `/dnschangelogs example.com`
 
 #### 🔍 智能域名管理
 - **分页显示**：当您管理大量域名时，系统自动分页显示，每页显示适量域名
@@ -184,6 +185,8 @@ docker compose up -d
 | EXCLUDE_DOMAINS | 排除的域名列表（逗号分隔） | 可选 | `example.com,example.org` |
 | IN_CHINA | 是否部署在中国大陆服务器 | 可选 | `true` 或 `false`（默认为`false`） |
 | ENABLE_IPV6_DDNS | 是否启用IPv6 DDNS更新 | 可选 | `true` 或 `false`（默认为`false`） |
+| BOT_LANGUAGE | Bot提示语言 | 可选 | `zh-CN` 或 `en-US`（默认自动推断，回退为`zh-CN`） |
+| DEBUG_DDNS | 是否打印DDNS调试日志 | 可选 | `true` 或 `false`（默认为`false`） |
 
 ## 故障排除
 

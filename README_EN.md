@@ -130,6 +130,7 @@ docker compose up -d
 - `/getdnsall` - Query all DNS records under a domain (supports A/AAAA/CNAME/TXT)
 - `/deldns` - Delete specified DNS records (supports A/AAAA/CNAME/TXT)
 - `/dnschangelogs` - View DNS change logs
+- `/dnschangelogs domain-keyword` - Fuzzy search DNS change logs by domain, for example `/dnschangelogs example.com`
 
 #### 🔍 Smart Domain Management
 - **Pagination**: Automatically paginate when managing large numbers of domains
@@ -182,6 +183,8 @@ When creating an API Token, include these permissions:
 | EXCLUDE_DOMAINS  | Excluded domains (comma-separated) | No       | `example.com,example.org`                      |
 | IN_CHINA         | Whether deployed in mainland China | No       | `true` or `false` (default: `false`)           |
 | ENABLE_IPV6_DDNS | enable IPv6 DDNS update | No | `true` or `false` (default: `false`) |
+| BOT_LANGUAGE     | Bot prompt language                | No       | `zh-CN` or `en-US` (auto-detected by default, fallback: `zh-CN`) |
+| DEBUG_DDNS       | Print DDNS debug logs              | No       | `true` or `false` (default: `false`)           |
 
 ## Troubleshooting
 

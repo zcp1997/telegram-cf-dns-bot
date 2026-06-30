@@ -1,4 +1,10 @@
-require('dotenv').config();
+try {
+  require('dotenv').config();
+} catch (error) {
+  if (error.code !== 'MODULE_NOT_FOUND') {
+    throw error;
+  }
+}
 
 // Telegram Bot配置
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || 'your_telegram_token_here';
@@ -25,6 +31,7 @@ const ALLOWED_CHAT_IDS = (process.env.ALLOWED_CHAT_IDS || '').split(',').map(id 
 const IN_CHINA = process.env.IN_CHINA === 'true';
 
 const ENABLE_IPV6_DDNS = process.env.ENABLE_IPV6_DDNS === 'true';
+const DEBUG_DDNS = process.env.DEBUG_DDNS === 'true';
 
 // 会话超时时间
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30分钟
@@ -61,5 +68,6 @@ module.exports = {
   CACHE_TTL,
   DDNS_SAVE_INTERVAL_SECONDS,
   IN_CHINA,
-  ENABLE_IPV6_DDNS
+  ENABLE_IPV6_DDNS,
+  DEBUG_DDNS
 };

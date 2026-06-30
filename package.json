@@ -1,25 +1,26 @@
 {
     "name": "telegram-cf-dns-bot",
-    "version": "0.5.6",
+    "version": "0.7.0",
     "description": "Telegram bot for managing Cloudflare DNS records",
     "main": "src/index.js",
     "scripts": {
-      "start": "node src/index.js"
+        "start": "node src/index.js",
+        "test": "node --test test/*.test.js"
     },
     "dependencies": {
-      "axios": "^1.6.0",
-      "telegraf": "^4.15.0",
-      "dotenv": "^16.3.1",
-      "net": "^1.0.2",
-      "moment": "^2.29.4"
+        "axios": "^1.6.0",
+        "telegraf": "^4.15.0",
+        "dotenv": "^16.3.1",
+        "net": "^1.0.2",
+        "moment": "^2.29.4"
     },
     "type": "commonjs",
     "repository": {
-      "type": "git",
-      "url": "git+https://github.com/zcp1997/telegram-cf-dns-bot.git"
+        "type": "git",
+        "url": "git+https://github.com/zcp1997/telegram-cf-dns-bot.git"
     },
     "engines": {
-      "node": ">=14"
+        "node": ">=14"
     },
     "packageManager": "pnpm@8.10.0"
 }
