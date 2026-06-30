@@ -2,6 +2,7 @@ const { userSessions, SessionState } = require('../core/session');
 const { getConfiguredDomains } = require('../../utils/domain');
 const { command, displayDomainsPage } = require('./utils');
 const { setupCallbacks } = require('./callbacks');
+const { t } = require('../../i18n');
 
 function setup(bot) {
   bot.command(command.command, async (ctx) => {
@@ -17,7 +18,7 @@ function setup(bot) {
       const domains = await getConfiguredDomains();
       await displayDomainsPage(ctx, domains, 0);
     } catch (error) {
-      ctx.reply(`获取域名列表失败: ${error.message}`);
+      ctx.reply(t('setdns.fetchDomainsFailed', { message: error.message }));
     }
   });
   

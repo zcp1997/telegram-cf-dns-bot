@@ -3,6 +3,42 @@ const { trackGetDnsMessage, createGetDnsReply, deleteGetDnsProcessMessages, quer
 const { deleteSingleDnsRecord, updateDnsRecord, getDnsRecord } = require('../../services/cloudflare');
 const { getZoneIdForDomain, getConfiguredDomains } = require('../../utils/domain');
 const { DNS_RECORDS_PAGE_SIZE } = require('../../config');
+const { t } = require('../../i18n');
+
+function proxyStatusText(proxied) {
+  return proxied ? t('getdns.proxyEnabled') : t('getdns.proxyDisabled');
+}
+
+function recordContentLabel(type) {
+  if (type === 'A' || type === 'AAAA') return t('getdns.ipLabel');
+  if (type === 'CNAME') return t('getdns.targetDomainLabel');
+  if (type === 'TXT') return t('getdns.textContentLabel');
+  return t('getdns.contentLabel');
+}
+
+function recordTypeDisplay(type) {
+  if (type === 'A') return '4️⃣ IPv4 (A)';
+  if (type === 'AAAA') return '6️⃣ IPv6 (AAAA)';
+  if (type === 'CNAME') return '🔗 CNAME';
+  if (type === 'TXT') return '📄 TXT';
+  return type;
+}
+
+function updatePromptForRecord(record) {
+  const params = { domain: record.name, content: record.content };
+  if (record.type === 'A') return t('getdns.promptNewA', params);
+  if (record.type === 'AAAA') return t('getdns.promptNewAAAA', params);
+  if (record.type === 'CNAME') return t('getdns.promptNewCNAME', params);
+  if (record.type === 'TXT') return t('getdns.promptNewTXT', params);
+  return t('getdns.promptNewContent', params);
+}
+
+function withStatusCode(message, error) {
+  if (!error.response) {
+    return message;
+  }
+  return message + t('getdns.statusCode', { status: error.response.status });
+}
 
 function setupCallbacks(bot) {
   bot.action(/^select_domain_query_(.+)$/, async (ctx) => {
@@ -10,7 +46,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.SELECTING_DOMAIN_FOR_QUERY) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -20,18 +56,12 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
-      `已选择域名: ${rootDomain}\n\n` +
-      `请输入要查询的具体域名，或直接发送 "." 查询根域名。\n\n` +
-      `支持查询的记录类型: 4️⃣A记录 6️⃣AAAA记录 🔗CNAME记录 📄TXT记录\n\n` +
-      `示例：\n` +
-      `• 输入 "www" → 查询 www.${rootDomain}\n` +
-      `• 输入 "mail" → 查询 mail.${rootDomain}\n` +
-      `• 输入 "." → 查询 ${rootDomain}`,
+      t('getdns.domainSelected', { domain: rootDomain }),
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: '查询根域名', callback_data: 'query_root_domain' },
-            { text: '取消操作', callback_data: 'cancel_getdns' }
+            { text: t('getdns.queryRootDomain'), callback_data: 'query_root_domain' },
+            { text: t('common.cancelOperation'), callback_data: 'cancel_getdns' }
           ]]
         }
       }
@@ -44,7 +74,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_SUBDOMAIN_INPUT) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -56,7 +86,7 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     
     // 先编辑当前消息
-    await ctx.editMessageText('已取消DNS记录查询操作。');
+    await ctx.editMessageText(t('getdns.cancelled'));
     
     // 获取当前回调消息的ID，以便在删除时排除它
     const currentMessageId = ctx.callbackQuery.message.message_id;
@@ -76,7 +106,7 @@ function setupCallbacks(bot) {
     // 允许在查看记录和管理记录状态下点击
     if (!session || (session.state !== SessionState.VIEWING_DNS_RECORDS &&
       session.state !== SessionState.MANAGING_DNS_RECORD)) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -87,7 +117,7 @@ function setupCallbacks(bot) {
     // 查找完整的记录信息
     const record = session.dnsRecords[recordIndex];
     if (!record) {
-      await ctx.answerCbQuery('找不到记录信息');
+      await ctx.answerCbQuery(t('getdns.recordNotFound'));
       return;
     }
 
@@ -95,48 +125,30 @@ function setupCallbacks(bot) {
     session.selectedRecord = record;
     session.state = SessionState.MANAGING_DNS_RECORD;
 
-    // 显示记录详情和操作选项
-    let recordTypeDisplay = record.type;
-    let contentLabel = '内容';
-    
-    if (record.type === 'A') {
-      recordTypeDisplay = '4️⃣ IPv4 (A)';
-      contentLabel = 'IP地址';
-    } else if (record.type === 'AAAA') {
-      recordTypeDisplay = '6️⃣ IPv6 (AAAA)';
-      contentLabel = 'IP地址';
-    } else if (record.type === 'CNAME') {
-      recordTypeDisplay = '🔗 CNAME';
-      contentLabel = '目标域名';
-    } else if (record.type === 'TXT') {
-      recordTypeDisplay = '📄 TXT';
-      contentLabel = '文本内容';
-    }
-
     let recordDetails =
-      `域名: ${record.name}\n` +
-      `${contentLabel}: ${record.content}\n` +
-      `类型: ${recordTypeDisplay}\n`;
+      `${t('getdns.domainLabel')}: ${record.name}\n` +
+      `${recordContentLabel(record.type)}: ${record.content}\n` +
+      `${t('getdns.typeLabel')}: ${recordTypeDisplay(record.type)}\n`;
     
     // 只对支持代理的记录类型显示代理状态
     if (record.type === 'A' || record.type === 'AAAA' || record.type === 'CNAME') {
-      recordDetails += `代理状态: ${record.proxied ? '已启用' : '未启用'}`;
+      recordDetails += `${t('getdns.proxyStatusLabel')}: ${proxyStatusText(record.proxied)}`;
     } else {
-      recordDetails += `代理状态: 不支持`;
+      recordDetails += `${t('getdns.proxyStatusLabel')}: ${t('getdns.proxyUnsupported')}`;
     }
 
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
-      `DNS记录详情:\n\n${recordDetails}\n\n请选择操作:`,
+      t('getdns.recordDetails', { details: recordDetails }),
       {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: '更新记录', callback_data: 'dns_update_record' },
-              { text: '删除记录', callback_data: 'dns_delete_record' }
+              { text: t('getdns.updateRecord'), callback_data: 'dns_update_record' },
+              { text: t('getdns.deleteRecord'), callback_data: 'dns_delete_record' }
             ],
             [
-              { text: '返回列表', callback_data: 'dns_back_to_list' }
+              { text: t('getdns.backToList'), callback_data: 'dns_back_to_list' }
             ]
           ]
         }
@@ -154,7 +166,7 @@ function setupCallbacks(bot) {
     if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS &&
       session.state !== SessionState.VIEWING_DNS_RECORDS &&
       session.state !== SessionState.MANAGING_DNS_RECORD)) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -174,7 +186,7 @@ function setupCallbacks(bot) {
     if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS &&
       session.state !== SessionState.VIEWING_DNS_RECORDS &&
       session.state !== SessionState.MANAGING_DNS_RECORD)) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -190,7 +202,10 @@ function setupCallbacks(bot) {
     trackGetDnsMessage(ctx);
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
-    await ctx.answerCbQuery(`第 ${session.currentPage + 1} 页，共 ${session.totalPages} 页`);
+    await ctx.answerCbQuery(t('getdns.pageInfoCallback', {
+      page: session.currentPage + 1,
+      totalPages: session.totalPages
+    }));
   });
 
   // 返回列表
@@ -200,7 +215,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -219,7 +234,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.MANAGING_DNS_RECORD) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -228,39 +243,42 @@ function setupCallbacks(bot) {
     await ctx.answerCbQuery();
     
     const record = session.selectedRecord;
-    let contentLabel = '当前内容';
-    let updateContentLabel = '🔄 修改内容';
+    let contentLabel = t('getdns.currentContentLabel');
+    let updateContentLabel = t('getdns.updateContent');
     
     if (record.type === 'A' || record.type === 'AAAA') {
-      contentLabel = '当前IP';
-      updateContentLabel = '🔄 修改IP地址';
+      contentLabel = t('getdns.currentIpLabel');
+      updateContentLabel = t('getdns.updateIp');
     } else if (record.type === 'CNAME') {
-      contentLabel = '当前目标';
-      updateContentLabel = '🔄 修改目标域名';
+      contentLabel = t('getdns.currentTargetLabel');
+      updateContentLabel = t('getdns.updateTarget');
     } else if (record.type === 'TXT') {
-      contentLabel = '当前文本';
-      updateContentLabel = '🔄 修改文本内容';
+      contentLabel = t('getdns.currentTextLabel');
+      updateContentLabel = t('getdns.updateText');
     }
     
-    let messageText = `请选择要修改的内容:\n\n` +
-      `域名: ${record.name}\n` +
-      `${contentLabel}: ${record.content}\n`;
+    let proxyLine = '';
     
     // 构建按钮
     const buttons = [[{ text: updateContentLabel, callback_data: 'dns_update_ip' }]];
     
     // 只对支持代理的记录类型显示代理状态和相关按钮
     if (record.type === 'A' || record.type === 'AAAA' || record.type === 'CNAME') {
-      messageText += `当前代理状态: ${record.proxied ? '已启用' : '未启用'}`;
-      buttons[0].push({ text: '🔁 修改代理状态', callback_data: 'dns_update_proxy_only' });
+      proxyLine = `${t('getdns.proxyCurrentStatusLabel')}: ${proxyStatusText(record.proxied)}`;
+      buttons[0].push({ text: t('getdns.updateProxyOnly'), callback_data: 'dns_update_proxy_only' });
     } else {
-      messageText += `代理状态: 不支持`;
+      proxyLine = `${t('getdns.proxyStatusLabel')}: ${t('getdns.proxyUnsupported')}`;
     }
     
-    buttons.push([{ text: '取消操作', callback_data: 'cancel_update_dns' }]);
+    buttons.push([{ text: t('common.cancelOperation'), callback_data: 'cancel_update_dns' }]);
     
     await createGetDnsReply(ctx)(
-      messageText,
+      t('getdns.updateChoice', {
+        domain: record.name,
+        contentLabel,
+        content: record.content,
+        proxyLine
+      }),
       {
         reply_markup: {
           inline_keyboard: buttons
@@ -276,7 +294,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_UPDATE_CHOICE) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -287,36 +305,14 @@ function setupCallbacks(bot) {
     await ctx.answerCbQuery();
     
     const record = session.selectedRecord;
-    let promptMessage = '';
-    let currentLabel = '当前内容';
-    
-    if (record.type === 'A') {
-      promptMessage = `请输入 ${record.name} 的新IPv4地址。\n` +
-        `${currentLabel}: ${record.content}\n` +
-        `例如：192.168.1.1`;
-    } else if (record.type === 'AAAA') {
-      promptMessage = `请输入 ${record.name} 的新IPv6地址。\n` +
-        `${currentLabel}: ${record.content}\n` +
-        `例如：2001:db8::1`;
-    } else if (record.type === 'CNAME') {
-      promptMessage = `请输入 ${record.name} 的新目标域名。\n` +
-        `${currentLabel}: ${record.content}\n` +
-        `例如：example.com`;
-    } else if (record.type === 'TXT') {
-      promptMessage = `请输入 ${record.name} 的新文本内容。\n` +
-        `${currentLabel}: ${record.content}\n` +
-        `例如：v=spf1 include:_spf.google.com ~all`;
-    } else {
-      promptMessage = `请输入 ${record.name} 的新内容。\n` +
-        `${currentLabel}: ${record.content}`;
-    }
+    const promptMessage = updatePromptForRecord(record);
     
     await createGetDnsReply(ctx)(
       promptMessage,
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: '取消操作', callback_data: 'cancel_update_dns' }
+            { text: t('common.cancelOperation'), callback_data: 'cancel_update_dns' }
           ]]
         }
       }
@@ -330,29 +326,30 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_UPDATE_CHOICE) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
     const record = session.selectedRecord;
-    const currentProxyStatus = record.proxied ? '已启用' : '未启用';
-    const suggestedStatus = record.proxied ? '未启用' : '已启用';
+    const currentProxyStatus = proxyStatusText(record.proxied);
+    const suggestedStatus = proxyStatusText(!record.proxied);
 
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
-      `修改 ${record.name} 的代理状态\n\n` +
-      `当前状态: ${currentProxyStatus}\n` +
-      `建议切换为: ${suggestedStatus}\n\n` +
-      `注意：某些服务（如 SSH、FTP 等）可能需要关闭代理才能正常使用。`,
+      t('getdns.proxyUpdatePrompt', {
+        domain: record.name,
+        currentStatus: currentProxyStatus,
+        suggestedStatus
+      }),
       {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: '❌ 设置为不启用代理', callback_data: 'dns_proxy_only_no' },
-              { text: '✅ 设置为启用代理', callback_data: 'dns_proxy_only_yes' }
+              { text: t('getdns.proxySetNo'), callback_data: 'dns_proxy_only_no' },
+              { text: t('getdns.proxySetYes'), callback_data: 'dns_proxy_only_yes' }
             ],
             [
-              { text: '取消操作', callback_data: 'cancel_update_dns' }
+              { text: t('common.cancelOperation'), callback_data: 'cancel_update_dns' }
             ]
           ]
         }
@@ -366,22 +363,25 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_UPDATE_CHOICE) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
     const record = session.selectedRecord;
-    const proxyStatusText = proxied ? '启用代理' : '禁用代理';
+    const proxyStatus = proxied ? t('getdns.enableProxy') : t('getdns.disableProxy');
 
     await ctx.answerCbQuery();
     await ctx.editMessageText(
-      `正在更新代理状态: ${record.name} -> ${proxyStatusText}`
+      t('getdns.updatingProxy', { domain: record.name, proxyStatus })
     );
 
     try {
       // 检查记录是否包含必要的字段
       if (!record.zone_id || !record.id) {
-        throw new Error(`记录信息不完整: zone_id=${record.zone_id}, id=${record.id}`);
+        throw new Error(t('getdns.incompleteRecord', {
+          zoneId: record.zone_id,
+          recordId: record.id
+        }));
       }
 
       console.log(`更新代理状态记录信息: ${JSON.stringify(record)}`);
@@ -397,14 +397,11 @@ function setupCallbacks(bot) {
         record // 传递完整的原始记录
       );
       
-      const statusText = proxied ? '已启用代理' : '已禁用代理';
-      await ctx.reply(`DNS记录代理状态已成功更新: ${record.name} -> ${statusText}`);
+      const statusText = proxied ? t('getdns.proxyEnabledDone') : t('getdns.proxyDisabledDone');
+      await ctx.reply(t('getdns.proxyUpdated', { domain: record.name, status: statusText }));
       deleteGetDnsProcessMessages(ctx);
     } catch (error) {
-      let errorMessage = `更新代理状态过程中发生错误: ${error.message}`;
-      if (error.response) {
-        errorMessage += ` (状态码: ${error.response.status})`;
-      }
+      const errorMessage = withStatusCode(t('getdns.proxyUpdateError', { message: error.message }), error);
       await ctx.reply(errorMessage);
       console.error('更新DNS记录代理状态时出错:', error);
     }
@@ -429,7 +426,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.MANAGING_DNS_RECORD) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -437,16 +434,17 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
-      `确定要删除以下DNS记录吗？\n\n` +
-      `域名: ${record.name}\n` +
-      `IP地址: ${record.content}\n` +
-      `类型: ${record.type}`,
+      t('getdns.deleteConfirm', {
+        domain: record.name,
+        content: record.content,
+        type: record.type
+      }),
       {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: '确认删除', callback_data: 'confirm_delete_record' },
-              { text: '取消', callback_data: 'cancel_delete_record' }
+              { text: t('getdns.confirmDelete'), callback_data: 'confirm_delete_record' },
+              { text: t('common.cancel'), callback_data: 'cancel_delete_record' }
             ]
           ]
         }
@@ -461,22 +459,22 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.MANAGING_DNS_RECORD) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
     const record = session.selectedRecord;
 
     await ctx.answerCbQuery();
-    await ctx.editMessageText(`正在删除 ${record.name} 的DNS记录...`);
+    await ctx.editMessageText(t('getdns.deleting', { domain: record.name }));
 
     try {
       // 修改：传递完整的记录信息作为第三个参数
       await deleteSingleDnsRecord(record.zone_id, record.id, record);
-      await ctx.reply(`DNS记录已成功删除: ${record.name}`);
+      await ctx.reply(t('getdns.deleted', { domain: record.name }));
       await deleteGetDnsProcessMessages(ctx);
     } catch (error) {
-      await ctx.reply(`删除过程中发生错误: ${error.message}`);
+      await ctx.reply(t('getdns.deleteError', { message: error.message }));
     }
 
     userSessions.delete(chatId);
@@ -489,7 +487,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -497,7 +495,7 @@ function setupCallbacks(bot) {
     delete session.selectedRecord;
 
     await ctx.answerCbQuery();
-    await ctx.editMessageText('已取消删除操作');
+    await ctx.editMessageText(t('getdns.deleteCancelled'));
     await displayDnsRecordsPage(ctx, session);
   });
 
@@ -508,7 +506,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -516,7 +514,7 @@ function setupCallbacks(bot) {
     delete session.selectedRecord;
 
     await ctx.answerCbQuery();
-    await ctx.editMessageText('已取消更新操作');
+    await ctx.editMessageText(t('getdns.updateCancelled'));
     await displayDnsRecordsPage(ctx, session);
   });
 
@@ -526,7 +524,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_NEW_PROXY) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -534,14 +532,21 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await ctx.editMessageText(
-      `正在更新: ${record.name} -> ${session.newIpAddress} ` +
-      `(类型: ${record.type}, 已启用代理)`
+      t('getdns.updatingRecord', {
+        domain: record.name,
+        content: session.newIpAddress,
+        type: record.type,
+        proxyStatus: t('getdns.proxyEnabled')
+      })
     );
 
     try {
       // 检查记录是否包含必要的字段
       if (!record.zone_id || !record.id) {
-        throw new Error(`记录信息不完整: zone_id=${record.zone_id}, id=${record.id}`);
+        throw new Error(t('getdns.incompleteRecord', {
+          zoneId: record.zone_id,
+          recordId: record.id
+        }));
       }
 
       console.log(`更新记录信息: ${JSON.stringify(record)}`);
@@ -556,13 +561,10 @@ function setupCallbacks(bot) {
         true,
         record // 传递完整的原始记录
       );
-      await ctx.reply(`DNS记录已成功更新: ${record.name}`);
+      await ctx.reply(t('getdns.updated', { domain: record.name }));
       deleteGetDnsProcessMessages(ctx);
     } catch (error) {
-      let errorMessage = `更新过程中发生错误: ${error.message}`;
-      if (error.response) {
-        errorMessage += ` (状态码: ${error.response.status})`;
-      }
+      const errorMessage = withStatusCode(t('getdns.updateError', { message: error.message }), error);
       await ctx.reply(errorMessage);
       console.error('更新DNS记录时出错:', error);
     }
@@ -575,7 +577,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_NEW_PROXY) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -583,14 +585,21 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await ctx.editMessageText(
-      `正在更新: ${record.name} -> ${session.newIpAddress} ` +
-      `(类型: ${record.type}, 未启用代理)`
+      t('getdns.updatingRecord', {
+        domain: record.name,
+        content: session.newIpAddress,
+        type: record.type,
+        proxyStatus: t('getdns.proxyDisabled')
+      })
     );
 
     try {
       // 检查记录是否包含必要的字段
       if (!record.zone_id || !record.id) {
-        throw new Error(`记录信息不完整: zone_id=${record.zone_id}, id=${record.id}`);
+        throw new Error(t('getdns.incompleteRecord', {
+          zoneId: record.zone_id,
+          recordId: record.id
+        }));
       }
 
       console.log(`更新记录信息: ${JSON.stringify(record)}`);
@@ -605,13 +614,10 @@ function setupCallbacks(bot) {
         false,
         record // 传递完整的原始记录
       );
-      await ctx.reply(`DNS记录已成功更新: ${record.name}`);
+      await ctx.reply(t('getdns.updated', { domain: record.name }));
       deleteGetDnsProcessMessages(ctx);
     } catch (error) {
-      let errorMessage = `更新过程中发生错误: ${error.message}`;
-      if (error.response) {
-        errorMessage += ` (状态码: ${error.response.status})`;
-      }
+      const errorMessage = withStatusCode(t('getdns.updateError', { message: error.message }), error);
       await ctx.reply(errorMessage);
       console.error('更新DNS记录时出错:', error);
     }
@@ -622,9 +628,9 @@ function setupCallbacks(bot) {
   bot.action('dns_done', async (ctx) => {
     const chatId = ctx.chat.id;
     // 先回答回调查询
-    await ctx.answerCbQuery('查询完成');
+    await ctx.answerCbQuery(t('getdns.doneAnswer'));
     // 发送完成提示
-    await ctx.reply('DNS记录查询已完成。');
+    await ctx.reply(t('getdns.doneMessage'));
 
     await deleteGetDnsProcessMessages(ctx);
     // 最后删除会话
@@ -642,7 +648,7 @@ function setupCallbacks(bot) {
     if (!session || (session.state !== SessionState.SELECTING_DOMAIN_FOR_ALL_DNS &&
       session.state !== SessionState.VIEWING_DNS_RECORDS &&
       session.state !== SessionState.MANAGING_DNS_RECORD)) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -651,14 +657,14 @@ function setupCallbacks(bot) {
     const zoneId = await getZoneIdForDomain(domainName);
 
     if (!zoneId) {
-      await createGetDnsReply(ctx)(`无法找到此域名对应的Zone ID，请联系管理员`);
+      await createGetDnsReply(ctx)(t('getdns.zoneNotFound'));
       userSessions.delete(chatId);
       return;
     }
     await ctx.answerCbQuery();
 
     // 显示正在查询的提示
-    await createGetDnsReply(ctx)(`正在查询 ${domainName} 的所有DNS记录...`);
+    await createGetDnsReply(ctx)(t('getdns.queryingAll', { domain: domainName }));
 
     try {
       const { records } = await getDnsRecord(domainName, true);
@@ -677,10 +683,10 @@ function setupCallbacks(bot) {
         await displayDnsRecordsPage(ctx, session);
       }
       else {
-        await createGetDnsReply(ctx)(`未找到 ${domainName} 的DNS记录`);
+        await createGetDnsReply(ctx)(t('getdns.noRecords', { domain: domainName }));
       }
     } catch (error) {
-      await createGetDnsReply(ctx)(`查询过程中发生错误: ${error.message}`);
+      await createGetDnsReply(ctx)(t('getdns.queryError', { message: error.message }));
     }
   });
 
@@ -696,7 +702,7 @@ function setupCallbacks(bot) {
       SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
 
     if (!session || session.state !== expectedState) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -708,7 +714,7 @@ function setupCallbacks(bot) {
         const domains = await getConfiguredDomains();
         await displayDomainsPage(ctx, domains, session.currentPage, commandType, session.searchKeyword);
       } catch (error) {
-        await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+        await createGetDnsReply(ctx)(t('getdns.fetchDomainsFailed', { message: error.message }));
       }
     }
 
@@ -727,7 +733,7 @@ function setupCallbacks(bot) {
       SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
 
     if (!session || session.state !== expectedState) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -743,7 +749,7 @@ function setupCallbacks(bot) {
         await displayDomainsPage(ctx, domains, session.currentPage, commandType, session.searchKeyword);
       }
     } catch (error) {
-      await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      await createGetDnsReply(ctx)(t('getdns.fetchDomainsFailed', { message: error.message }));
     }
 
     await ctx.answerCbQuery();
@@ -759,12 +765,15 @@ function setupCallbacks(bot) {
         const domains = await getConfiguredDomains();
         const { DOMAINS_PAGE_SIZE } = require('../../config');
         const totalPages = Math.ceil(domains.length / DOMAINS_PAGE_SIZE);
-        await ctx.answerCbQuery(`第 ${session.currentPage + 1} 页，共 ${totalPages} 页`);
+        await ctx.answerCbQuery(t('getdns.pageInfoCallback', {
+          page: session.currentPage + 1,
+          totalPages
+        }));
       } catch (error) {
-        await ctx.answerCbQuery('页码信息');
+        await ctx.answerCbQuery(t('getdns.pageInfoFallback'));
       }
     } else {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
     }
   });
 
@@ -780,7 +789,7 @@ function setupCallbacks(bot) {
       SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
 
     if (!session || session.state !== expectedState) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -792,20 +801,11 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createGetDnsReply(ctx)(
-      '🔍 请输入域名搜索关键字：\n\n' +
-      '可以搜索域名中的任何部分，支持以下记录类型：\n' +
-      '4️⃣ A记录 (IPv4)\n' +
-      '6️⃣ AAAA记录 (IPv6)\n' +
-      '🔗 CNAME记录 (域名别名)\n' +
-      '📄 TXT记录 (文本记录)\n\n' +
-      '搜索示例：\n' +
-      '• 输入 "blog" → 找到 blog.example.com\n' +
-      '• 输入 "api" → 找到 api.mydomain.org\n' +
-      '• 输入 ".com" → 找到所有 .com 域名',
+      t('getdns.searchPrompt'),
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: '取消搜索', callback_data: 'cancel_search_domains' }
+            { text: t('getdns.cancelSearch'), callback_data: 'cancel_search_domains' }
           ]]
         }
       }
@@ -827,7 +827,7 @@ function setupCallbacks(bot) {
       SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
 
     if (!session || (session.state !== expectedSearchState && session.state !== expectedSelectState)) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -841,7 +841,7 @@ function setupCallbacks(bot) {
       const domains = await getConfiguredDomains();
       await displayDomainsPage(ctx, domains, 0, commandType);
     } catch (error) {
-      await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      await createGetDnsReply(ctx)(t('getdns.fetchDomainsFailed', { message: error.message }));
     }
 
     await ctx.answerCbQuery();
@@ -854,7 +854,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -867,7 +867,7 @@ function setupCallbacks(bot) {
         const domains = await getConfiguredDomains();
         await displayDomainsPage(ctx, domains, session.currentPage, commandType, session.searchKeyword);
       } catch (error) {
-        await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+        await createGetDnsReply(ctx)(t('getdns.fetchDomainsFailed', { message: error.message }));
       }
     } else if (session.state === SessionState.WAITING_SEARCH_KEYWORD_FOR_ALL) {
       session.state = SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
@@ -877,7 +877,7 @@ function setupCallbacks(bot) {
         const domains = await getConfiguredDomains();
         await displayDomainsPage(ctx, domains, session.currentPage, commandType, session.searchKeyword);
       } catch (error) {
-        await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+        await createGetDnsReply(ctx)(t('getdns.fetchDomainsFailed', { message: error.message }));
       }
     }
 

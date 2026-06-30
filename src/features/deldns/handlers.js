@@ -2,6 +2,14 @@ const { trackDelDnsMessage, createDelDnsReply } = require('./utils');
 const { getDnsRecord } = require('../../services/cloudflare');
 const { SessionState, userSessions } = require('../core/session');
 const { getConfiguredDomains } = require('../../utils/domain');
+const { t } = require('../../i18n');
+
+function formatRecordsInfo(records) {
+  return records.map(record => t('deldns.recordInfo', {
+    type: record.type,
+    content: record.content
+  })).join('\n\n');
+}
 
 // 处理删除DNS的子域名输入
 async function handleSubdomainForDelete(ctx, session) {
@@ -13,17 +21,15 @@ async function handleSubdomainForDelete(ctx, session) {
     const { records } = await getDnsRecord(fullDomain);
     if (!records || records.length === 0) {
       await createDelDnsReply(ctx)(
-        `未找到 ${fullDomain} 的DNS记录\n\n` +
-        `请重新输入要删除的域名，或直接发送 "." 删除根域名。\n\n` +
-        `支持的记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT\n\n` +
-        `示例：\n` +
-        `• 输入 "api" → 删除 api.${session.rootDomain}\n` +
-        `• 输入 "." → 删除 ${session.rootDomain}`,
+        t('deldns.noRecordsRetry', {
+          domain: fullDomain,
+          rootDomain: session.rootDomain
+        }),
         {
           reply_markup: {
             inline_keyboard: [[
-              { text: '删除根域名', callback_data: 'del_root_domain' },
-              { text: '取消操作', callback_data: 'cancel_deldns' }
+              { text: t('deldns.deleteRootDomain'), callback_data: 'del_root_domain' },
+              { text: t('common.cancelOperation'), callback_data: 'cancel_deldns' }
             ]]
           }
         }
@@ -34,25 +40,23 @@ async function handleSubdomainForDelete(ctx, session) {
     session.domain = fullDomain;
     session.state = SessionState.WAITING_CONFIRM_DELETE;
 
-    const recordsInfo = records.map(record =>
-      `类型: ${record.type}\n内容: ${record.content}`
-    ).join('\n\n');
+    const recordsInfo = formatRecordsInfo(records);
 
     await createDelDnsReply(ctx)(
-      `找到以下DNS记录：\n\n${recordsInfo}\n\n确定要删除这些记录吗？`,
+      t('deldns.confirmRecords', { recordsInfo }),
       {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: '确认删除', callback_data: 'confirm_delete' },
-              { text: '取消', callback_data: 'cancel_delete' }
+              { text: t('deldns.confirmDelete'), callback_data: 'confirm_delete' },
+              { text: t('common.cancel'), callback_data: 'cancel_deldns' }
             ]
           ]
         }
       }
     );
   } catch (error) {
-    await createDelDnsReply(ctx)(`查询DNS记录时发生错误: ${error.message}`);
+    await createDelDnsReply(ctx)(t('deldns.queryError', { message: error.message }));
     userSessions.delete(ctx.chat.id);
   }
 }
@@ -64,13 +68,13 @@ async function handleSearchKeywordInputForDelete(ctx, session) {
 
   // 限制搜索关键字长度
   if (searchKeyword.length > 50) {
-    await createDelDnsReply(ctx)('搜索关键字过长，请输入不超过50个字符的关键字。');
+    await createDelDnsReply(ctx)(t('deldns.keywordTooLong'));
     return;
   }
 
   // 检查是否为空
   if (searchKeyword === '') {
-    await createDelDnsReply(ctx)('搜索关键字不能为空，请重新输入。');
+    await createDelDnsReply(ctx)(t('deldns.keywordEmpty'));
     return;
   }
 
@@ -85,7 +89,7 @@ async function handleSearchKeywordInputForDelete(ctx, session) {
     const domains = await getConfiguredDomains();
     await displayDomainsPage(ctx, domains, 0, searchKeyword);
   } catch (error) {
-    await createDelDnsReply(ctx)(`搜索域名失败: ${error.message}`);
+    await createDelDnsReply(ctx)(t('deldns.searchFailed', { message: error.message }));
   }
 }
 

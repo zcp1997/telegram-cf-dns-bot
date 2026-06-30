@@ -4,15 +4,16 @@ const { handleSubdomainForDDNS, handleIntervalForDDNS } = require('../../feature
 const { handleSubdomainForDelete, handleSearchKeywordInputForDelete } = require('../../features/deldns/handlers');
 const { handleDnsUpdateIpInput, handleSubdomainInput, handleSearchKeywordInput } = require('../../features/getdns/handlers');
 const { handleDnsLogsSearchKeywordInput } = require('../../features/dnschangelogs/handlers');
+const { t } = require('../../i18n');
 
 function setupTextHandler(bot) {
   bot.on('text', async (ctx) => {
-    console.log('收到文本消息:', ctx.message.text);
+    console.log('Received text message:', ctx.message.text);
     const chatId = ctx.chat.id;
     const session = userSessions.get(chatId);
 
     if (!session) {
-      console.log('未找到会话，忽略消息');
+      console.log('No session found, ignoring message');
       return;
     }
 
@@ -56,12 +57,12 @@ function setupTextHandler(bot) {
 
       // 处理记录类型选择状态（用户应该使用按钮而不是文本输入）
       case SessionState.SELECTING_RECORD_TYPE_FOR_SET:
-        await ctx.reply('请使用按钮选择DNS记录类型，而不是输入文本。');
+        await ctx.reply(t('core.text.selectRecordTypeWithButton'));
         break;
 
       // 新增：处理更新选择状态（用户应该使用按钮而不是文本输入）
       case SessionState.WAITING_UPDATE_CHOICE:
-        await ctx.reply('请使用按钮选择要修改的内容，而不是输入文本。');
+        await ctx.reply(t('core.text.selectUpdateChoiceWithButton'));
         break;
 
       // ddns 相关状态
@@ -78,7 +79,7 @@ function setupTextHandler(bot) {
         break;
 
       default:
-        console.log(`未知会话状态: ${session.state}`);
+        console.log(`Unknown session state: ${session.state}`);
     }
   });
 }

@@ -3,6 +3,23 @@ const { createOrUpdateDns } = require('../../services/cloudflare');
 const { trackSetDnsMessage, createSetDnsReply, deleteSetDnsProcessMessages, displayDomainsPage } = require('./utils');
 const { executeSetDns } = require('./handlers');
 const { getConfiguredDomains } = require('../../utils/domain');
+const { t } = require('../../i18n');
+
+function getRecordTypeKeyboard() {
+  return [
+    [
+      { text: t('setdns.recordType.a'), callback_data: 'select_record_type_A' },
+      { text: t('setdns.recordType.aaaa'), callback_data: 'select_record_type_AAAA' }
+    ],
+    [
+      { text: t('setdns.recordType.cname'), callback_data: 'select_record_type_CNAME' },
+      { text: t('setdns.recordType.txt'), callback_data: 'select_record_type_TXT' }
+    ],
+    [
+      { text: t('common.cancelOperation'), callback_data: 'cancel_setdns' }
+    ]
+  ];
+}
 
 function setupCallbacks(bot) {
   
@@ -11,7 +28,7 @@ function setupCallbacks(bot) {
     const chatId = ctx.chat.id;
     
     // 先编辑当前消息
-    await ctx.editMessageText('已取消DNS记录设置操作。');
+    await ctx.editMessageText(t('setdns.cancelled'));
     
     // 获取当前回调消息的ID，以便在删除时排除它
     const currentMessageId = ctx.callbackQuery.message.message_id;
@@ -28,7 +45,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_PROXY) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -42,7 +59,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_PROXY) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -57,7 +74,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.SELECTING_DOMAIN_FOR_SET) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -67,18 +84,12 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createSetDnsReply(ctx)(
-      `已选择域名: ${rootDomain}\n\n` +
-      `请输入要设置DNS记录的具体域名，或直接发送 "." 设置根域名。\n\n` +
-      `支持的记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT\n\n` +
-      `示例：\n` +
-      `• 输入 "www" → 设置 www.${rootDomain}\n` +
-      `• 输入 "api" → 设置 api.${rootDomain}\n` +
-      `• 输入 "." → 设置 ${rootDomain}`,
+      t('setdns.domainSelected', { domain: rootDomain }),
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: '设置根域名', callback_data: 'set_root_domain' },
-            { text: '取消操作', callback_data: 'cancel_setdns' }
+            { text: t('setdns.setRootDomain'), callback_data: 'set_root_domain' },
+            { text: t('common.cancelOperation'), callback_data: 'cancel_setdns' }
           ]]
         }
       }
@@ -92,7 +103,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.WAITING_SUBDOMAIN_FOR_SET) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -102,26 +113,10 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createSetDnsReply(ctx)(
-      `📋 请选择要为 ${session.rootDomain} 设置的DNS记录类型：\n\n` +
-      `4️⃣ A记录 - IPv4地址（如：192.168.1.1）\n` +
-      `6️⃣ AAAA记录 - IPv6地址（如：2001:db8::1）\n` +
-      `🔗 CNAME记录 - 域名别名（如：example.com）\n` +
-      `📄 TXT记录 - 文本记录（如：验证码、SPF等）`,
+      t('setdns.selectRecordType', { domain: session.rootDomain }),
       {
         reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '4️⃣ A记录 (IPv4)', callback_data: 'select_record_type_A' },
-              { text: '6️⃣ AAAA记录 (IPv6)', callback_data: 'select_record_type_AAAA' }
-            ],
-            [
-              { text: '🔗 CNAME记录', callback_data: 'select_record_type_CNAME' },
-              { text: '📄 TXT记录', callback_data: 'select_record_type_TXT' }
-            ],
-            [
-              { text: '取消操作', callback_data: 'cancel_setdns' }
-            ]
-          ]
+          inline_keyboard: getRecordTypeKeyboard()
         }
       }
     );
@@ -134,37 +129,26 @@ function setupCallbacks(bot) {
     const recordType = ctx.match[1];
 
     if (!session || session.state !== SessionState.SELECTING_RECORD_TYPE_FOR_SET) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
     session.recordType = recordType;
     session.state = SessionState.WAITING_RECORD_CONTENT;
 
-    let promptMessage = '';
-    let examples = '';
-    
-    if (recordType === 'A') {
-      promptMessage = `请输入 ${session.domain} 的IPv4地址：`;
-      examples = `例如：192.168.1.1 或 8.8.8.8`;
-    } else if (recordType === 'AAAA') {
-      promptMessage = `请输入 ${session.domain} 的IPv6地址：`;
-      examples = `例如：2001:db8::1 或 2001:4860:4860::8888`;
-    } else if (recordType === 'CNAME') {
-      promptMessage = `请输入 ${session.domain} 的目标域名：`;
-      examples = `例如：example.com 或 www.google.com`;
-    } else if (recordType === 'TXT') {
-      promptMessage = `请输入 ${session.domain} 的TXT记录内容：`;
-      examples = `例如：v=spf1 include:_spf.google.com ~all\n或：google-site-verification=xxxxxx`;
-    }
+    const promptKey = `setdns.prompt.${recordType.toLowerCase()}`;
+    const exampleKey = `setdns.example.${recordType.toLowerCase()}`;
 
     await ctx.answerCbQuery();
     await createSetDnsReply(ctx)(
-      `📝 ${promptMessage}\n\n${examples}`,
+      t('setdns.contentPrompt', {
+        prompt: t(promptKey, { domain: session.domain }),
+        examples: t(exampleKey)
+      }),
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: '取消操作', callback_data: 'cancel_setdns' }
+            { text: t('common.cancelOperation'), callback_data: 'cancel_setdns' }
           ]]
         }
       }
@@ -178,7 +162,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.SELECTING_DOMAIN_FOR_SET) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -190,7 +174,7 @@ function setupCallbacks(bot) {
         const domains = await getConfiguredDomains();
         await displayDomainsPage(ctx, domains, session.currentPage, session.searchKeyword);
       } catch (error) {
-        await createSetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+        await createSetDnsReply(ctx)(t('setdns.fetchDomainsFailed', { message: error.message }));
       }
     }
 
@@ -204,7 +188,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.SELECTING_DOMAIN_FOR_SET) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -220,7 +204,7 @@ function setupCallbacks(bot) {
         await displayDomainsPage(ctx, domains, session.currentPage, session.searchKeyword);
       }
     } catch (error) {
-      await createSetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      await createSetDnsReply(ctx)(t('setdns.fetchDomainsFailed', { message: error.message }));
     }
 
     await ctx.answerCbQuery();
@@ -236,12 +220,15 @@ function setupCallbacks(bot) {
         const domains = await getConfiguredDomains();
         const { DOMAINS_PAGE_SIZE } = require('../../config');
         const totalPages = Math.ceil(domains.length / DOMAINS_PAGE_SIZE);
-        await ctx.answerCbQuery(`第 ${session.currentPage + 1} 页，共 ${totalPages} 页`);
+        await ctx.answerCbQuery(t('setdns.pageInfoCallback', {
+          page: session.currentPage + 1,
+          totalPages
+        }));
       } catch (error) {
-        await ctx.answerCbQuery('页码信息');
+        await ctx.answerCbQuery(t('setdns.pageInfoFallback'));
       }
     } else {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
     }
   });
 
@@ -252,7 +239,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session || session.state !== SessionState.SELECTING_DOMAIN_FOR_SET) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -262,20 +249,11 @@ function setupCallbacks(bot) {
 
     await ctx.answerCbQuery();
     await createSetDnsReply(ctx)(
-      '🔍 请输入域名搜索关键字：\n\n' +
-      '可以搜索域名中的任何部分，支持设置以下记录类型：\n' +
-      '4️⃣ A记录 (IPv4)\n' +
-      '6️⃣ AAAA记录 (IPv6)\n' +
-      '🔗 CNAME记录 (域名别名)\n' +
-      '📄 TXT记录 (文本记录)\n\n' +
-      '搜索示例：\n' +
-      '• 输入 "blog" → 找到 blog.example.com\n' +
-      '• 输入 "api" → 找到 api.mydomain.org\n' +
-      '• 输入 ".com" → 找到所有 .com 域名',
+      t('setdns.searchPrompt'),
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: '取消搜索', callback_data: 'cancel_search_domains_set' }
+            { text: t('setdns.cancelSearch'), callback_data: 'cancel_search_domains_set' }
           ]]
         }
       }
@@ -290,7 +268,7 @@ function setupCallbacks(bot) {
 
     if (!session || (session.state !== SessionState.WAITING_SEARCH_KEYWORD_FOR_SET && 
                     session.state !== SessionState.SELECTING_DOMAIN_FOR_SET)) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -304,7 +282,7 @@ function setupCallbacks(bot) {
       const domains = await getConfiguredDomains();
       await displayDomainsPage(ctx, domains, 0);
     } catch (error) {
-      await createSetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      await createSetDnsReply(ctx)(t('setdns.fetchDomainsFailed', { message: error.message }));
     }
 
     await ctx.answerCbQuery();
@@ -317,7 +295,7 @@ function setupCallbacks(bot) {
     const session = userSessions.get(chatId);
 
     if (!session) {
-      await ctx.answerCbQuery('会话已过期');
+      await ctx.answerCbQuery(t('common.sessionExpired'));
       return;
     }
 
@@ -329,7 +307,7 @@ function setupCallbacks(bot) {
       const domains = await getConfiguredDomains();
       await displayDomainsPage(ctx, domains, session.currentPage, session.searchKeyword);
     } catch (error) {
-      await createSetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      await createSetDnsReply(ctx)(t('setdns.fetchDomainsFailed', { message: error.message }));
     }
 
     await ctx.answerCbQuery();

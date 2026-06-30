@@ -2,6 +2,7 @@ const { userSessions, SessionState } = require('../core/session');
 const { getConfiguredDomains } = require('../../utils/domain');
 const { command, commandAll, createGetDnsReply, displayDomainsPage } = require('./utils');
 const { setupCallbacks } = require('./callbacks');
+const { t } = require('../../i18n');
 
 function setup(bot) {
   bot.command(command.command, async (ctx) => {
@@ -17,7 +18,7 @@ function setup(bot) {
       const domains = await getConfiguredDomains();
       await displayDomainsPage(ctx, domains, 0, 'query');
     } catch (error) {
-      await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      await createGetDnsReply(ctx)(t('getdns.fetchDomainsFailed', { message: error.message }));
     }
   });
 
@@ -34,7 +35,7 @@ function setup(bot) {
       const domains = await getConfiguredDomains();
       await displayDomainsPage(ctx, domains, 0, 'all');
     } catch (error) {
-      await createGetDnsReply(ctx)(`获取域名列表失败: ${error.message}`);
+      await createGetDnsReply(ctx)(t('getdns.fetchDomainsFailed', { message: error.message }));
     }
   });
 

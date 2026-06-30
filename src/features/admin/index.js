@@ -39,21 +39,21 @@ function setup(bot) {
     try {
       const domains = await getConfiguredDomains();
       if (domains.length > 0) {
-        ctx.reply(`可管理的域名:\n${domains.join('\n')}`);
+        ctx.reply(t('admin.domainsList', { domains: domains.join('\n') }));
       } else {
-        ctx.reply('未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。');
+        ctx.reply(t('admin.noDomains'));
       }
     } catch (error) {
-      ctx.reply(`获取域名列表失败: ${error.message}`);
+      ctx.reply(t('admin.fetchDomainsFailed', { message: error.message }));
     }
   });
 
   bot.command(commands.listusers_command.command, async (ctx) => {
     const chatId = ctx.chat.id.toString();
     if (ALLOWED_CHAT_IDS[0] === chatId) {
-      ctx.reply(`当前允许访问的用户ID:\n${ALLOWED_CHAT_IDS.join('\n')}`);
+      ctx.reply(t('admin.allowedUsers', { users: ALLOWED_CHAT_IDS.join('\n') }));
     } else {
-      ctx.reply('⚠️ 只有管理员可以查看用户列表。');
+      ctx.reply(t('admin.listUsersAdminOnly'));
     }
   });
 
@@ -74,31 +74,33 @@ function setup(bot) {
 
           // 构建排除域名信息
           const excludeInfo = EXCLUDE_DOMAINS && EXCLUDE_DOMAINS.length > 0
-            ? `\n\n排除的域名:\n${EXCLUDE_DOMAINS.join('\n')}`
-            : '\n\n未配置排除域名';
+            ? `\n\n${t('admin.excludedDomains', { domains: EXCLUDE_DOMAINS.join('\n') })}`
+            : `\n\n${t('admin.noExcludedDomains')}`;
 
           await ctx.reply(
-            '域名到Zone ID的映射:\n\n' +
+            `${t('admin.zoneMapTitle')}\n\n` +
             mappings.join('\n') +
             excludeInfo + '\n\n' +
-            '当前配置状态：\n' +
-            `• API Token: ${CF_API_TOKEN ? '已配置' : '未配置'}\n` +
-            `• 可管理域名数量: ${domains.length}\n` +
-            `• 排除域名数量: ${EXCLUDE_DOMAINS ? EXCLUDE_DOMAINS.length : 0}`
+            `${t('admin.configStatus')}\n` +
+            `${t('admin.apiTokenStatus', {
+              status: CF_API_TOKEN ? t('admin.apiTokenConfigured') : t('admin.apiTokenNotConfigured')
+            })}\n` +
+            `${t('admin.manageableDomainsCount', { count: domains.length })}\n` +
+            t('admin.excludedDomainsCount', { count: EXCLUDE_DOMAINS ? EXCLUDE_DOMAINS.length : 0 })
           );
         } else {
           // 构建排除域名信息
           const excludeInfo = EXCLUDE_DOMAINS && EXCLUDE_DOMAINS.length > 0
-            ? `\n\n当前排除的域名:\n${EXCLUDE_DOMAINS.join('\n')}`
-            : '\n\n未配置排除域名';
+            ? `\n\n${t('admin.currentExcludedDomains', { domains: EXCLUDE_DOMAINS.join('\n') })}`
+            : `\n\n${t('admin.noExcludedDomains')}`;
 
-          await ctx.reply('⚠️ 未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。' + excludeInfo);
+          await ctx.reply(t('admin.noDomains') + excludeInfo);
         }
       } catch (error) {
-        await ctx.reply(`获取域名映射失败: ${error.message}`);
+        await ctx.reply(t('admin.fetchZoneMapFailed', { message: error.message }));
       }
     } else {
-      await ctx.reply('⚠️ 只有管理员可以查看域名映射。');
+      await ctx.reply(t('admin.zoneMapAdminOnly'));
     }
   });
 

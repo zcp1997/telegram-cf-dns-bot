@@ -1,9 +1,10 @@
 const { trackContextMessage, createTrackedReply, deleteProcessMessages } = require('../../utils/messageManager');
 const { DOMAINS_PAGE_SIZE } = require('../../config');
+const { t } = require('../../i18n');
 
 const command = {
   command: 'deldns',
-  description: '删除DNS记录 (A/AAAA/CNAME/TXT)'
+  description: t('deldns.command.description')
 };
 
 // 创建命令特定的跟踪函数
@@ -41,13 +42,13 @@ async function displayDomainsPage(ctx, domains, currentPage, searchKeyword = '')
   
   if (filteredDomains.length === 0) {
     const message = searchKeyword ? 
-      `没有找到包含关键字 "${searchKeyword}" 的域名。` : 
-      '未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。';
+      t('deldns.noSearchResults', { keyword: searchKeyword }) :
+      t('deldns.noDomains');
     
     await createDelDnsReply(ctx)(message, {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '取消操作', callback_data: 'cancel_deldns' }]
+          [{ text: t('common.cancelOperation'), callback_data: 'cancel_deldns' }]
         ]
       }
     });
@@ -70,9 +71,9 @@ async function displayDomainsPage(ctx, domains, currentPage, searchKeyword = '')
   
   // 上一页按钮
   if (currentPage > 0) {
-    navigationButtons.push({ 
-      text: '⬅️ 上一页', 
-      callback_data: `domains_prev_page_del` 
+    navigationButtons.push({
+      text: t('common.previousPage'),
+      callback_data: `domains_prev_page_del`
     });
   }
   
@@ -84,9 +85,9 @@ async function displayDomainsPage(ctx, domains, currentPage, searchKeyword = '')
   
   // 下一页按钮
   if (currentPage < totalPages - 1) {
-    navigationButtons.push({ 
-      text: '下一页 ➡️', 
-      callback_data: `domains_next_page_del` 
+    navigationButtons.push({
+      text: t('common.nextPage'),
+      callback_data: `domains_next_page_del`
     });
   }
   
@@ -94,20 +95,20 @@ async function displayDomainsPage(ctx, domains, currentPage, searchKeyword = '')
   const actionButtons = [];
   
   // 搜索按钮
-  actionButtons.push({ 
-    text: '🔍 搜索域名', 
-    callback_data: `search_domains_del` 
+  actionButtons.push({
+    text: t('deldns.searchDomain'),
+    callback_data: `search_domains_del`
   });
   
   if (searchKeyword) {
-    actionButtons.push({ 
-      text: '🔄 显示全部', 
-      callback_data: `show_all_domains_del` 
+    actionButtons.push({
+      text: t('deldns.showAllDomains'),
+      callback_data: `show_all_domains_del`
     });
   }
   
   // 取消按钮
-  actionButtons.push({ text: '取消操作', callback_data: 'cancel_deldns' });
+  actionButtons.push({ text: t('common.cancelOperation'), callback_data: 'cancel_deldns' });
   
   // 合并所有按钮
   const inlineKeyboard = [...domainButtons];
@@ -118,19 +119,26 @@ async function displayDomainsPage(ctx, domains, currentPage, searchKeyword = '')
   
   // 构建消息文本
   let message = searchKeyword ? 
-    `🔍 搜索结果 (关键字: "${searchKeyword}"):\n` :
-    '📋 请选择要删除DNS记录的域名：\n';
+    `${t('deldns.searchResultsTitle', { keyword: searchKeyword })}\n` :
+    `${t('deldns.selectDomainTitle')}\n`;
   
-  message += `\n🌐 第${startIdx + 1}-${endIdx}条，共${filteredDomains.length}个域名`;
+  message += `\n${t('deldns.domainRange', {
+    start: startIdx + 1,
+    end: endIdx,
+    total: filteredDomains.length
+  })}`;
   
   if (totalPages > 1) {
-    message += ` (第${currentPage + 1}页/共${totalPages}页)`;
+    message += t('deldns.pageInfo', {
+      page: currentPage + 1,
+      totalPages
+    });
   }
   
-  message += `\n\n支持记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT`;
+  message += `\n\n${t('deldns.supportedRecordTypes')}`;
   
   if (!searchKeyword) {
-    message += `\n💡 点击 🔍搜索域名 可快速查找特定域名`;
+    message += `\n${t('deldns.searchTip')}`;
   }
   
   await createDelDnsReply(ctx)(message, {
@@ -147,4 +155,4 @@ module.exports = {
   deleteDelDnsProcessMessages,
   displayDomainsPage,
   filterDomains
-}; 
+};

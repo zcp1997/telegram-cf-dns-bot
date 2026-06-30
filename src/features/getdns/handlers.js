@@ -2,6 +2,7 @@ const { userSessions, SessionState } = require('../core/session');
 const { validateDnsRecordContent } = require('../../services/validation');
 const { trackGetDnsMessage, createGetDnsReply, queryDomainRecords, displayDomainsPage } = require('./utils');
 const { getConfiguredDomains } = require('../../utils/domain');
+const { t } = require('../../i18n');
 
 // 处理新内容输入（IP地址、域名或文本）
 async function handleDnsUpdateIpInput(ctx, session) {
@@ -19,8 +20,9 @@ async function handleDnsUpdateIpInput(ctx, session) {
   // 对于IP记录，检查IP类型是否与记录类型匹配
   if ((record.type === 'A' || record.type === 'AAAA') && record.type !== validationResult.type) {
     await createGetDnsReply(ctx)(
-      `输入的IP类型 (${validationResult.type}) 与记录类型 (${record.type}) 不匹配。\n` +
-      `请输入正确类型的${record.type === 'A' ? 'IPv4' : 'IPv6'}地址。`
+      t('getdns.queryError', {
+        message: `IP type ${validationResult.type} does not match record type ${record.type}`
+      })
     );
     return;
   }
@@ -28,7 +30,7 @@ async function handleDnsUpdateIpInput(ctx, session) {
   // 确保记录包含必要的字段
   if (!record.zone_id || !record.id) {
     console.log('记录信息:', JSON.stringify(record));
-    await createGetDnsReply(ctx)('记录信息不完整，无法更新。请联系管理员。');
+    await createGetDnsReply(ctx)(t('getdns.incompleteRecordUser'));
     userSessions.delete(ctx.chat.id);
     return;
   }
@@ -42,7 +44,7 @@ async function handleDnsUpdateIpInput(ctx, session) {
     // 直接执行更新，TXT记录不需要选择代理状态
     const { updateDnsRecord } = require('../../services/cloudflare');
     
-    await createGetDnsReply(ctx)(`正在更新 ${record.name} 的TXT记录...`);
+    await createGetDnsReply(ctx)(t('getdns.updatingTxt', { domain: record.name }));
     
     try {
       await updateDnsRecord(
@@ -54,13 +56,13 @@ async function handleDnsUpdateIpInput(ctx, session) {
         false, // TXT记录不支持代理
         record
       );
-      await ctx.reply(`DNS记录已成功更新: ${record.name}`);
+      await ctx.reply(t('getdns.updated', { domain: record.name }));
       const { deleteGetDnsProcessMessages } = require('./utils');
       await deleteGetDnsProcessMessages(ctx);
     } catch (error) {
-      let errorMessage = `更新过程中发生错误: ${error.message}`;
+      let errorMessage = t('getdns.updateError', { message: error.message });
       if (error.response) {
-        errorMessage += ` (状态码: ${error.response.status})`;
+        errorMessage += t('getdns.statusCode', { status: error.response.status });
       }
       await ctx.reply(errorMessage);
       console.error('更新DNS记录时出错:', error);
@@ -73,26 +75,20 @@ async function handleDnsUpdateIpInput(ctx, session) {
   // 对于支持代理的记录类型，询问代理设置
   session.state = SessionState.WAITING_NEW_PROXY;
 
-  let contentTypeLabel = '内容';
-  if (record.type === 'A' || record.type === 'AAAA') {
-    contentTypeLabel = 'IP地址';
-  } else if (record.type === 'CNAME') {
-    contentTypeLabel = '目标域名';
-  }
-
   await createGetDnsReply(ctx)(
-    `是否为 ${record.name} 启用 Cloudflare 代理？\n\n` +
-    `当前状态: ${record.proxied ? '已启用' : '未启用'}\n\n` +
-    `注意：某些服务（如 SSH、FTP 等）可能需要关闭代理才能正常使用。`,
+    t('getdns.proxyPrompt', {
+      domain: record.name,
+      currentStatus: record.proxied ? t('getdns.proxyEnabled') : t('getdns.proxyDisabled')
+    }),
     {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '❌ 不启用代理', callback_data: 'dns_update_proxy_no' },
-            { text: '✅ 启用代理', callback_data: 'dns_update_proxy_yes' }
+            { text: t('getdns.proxyNo'), callback_data: 'dns_update_proxy_no' },
+            { text: t('getdns.proxyYes'), callback_data: 'dns_update_proxy_yes' }
           ],
           [
-            { text: '取消操作', callback_data: 'cancel_update_dns' }
+            { text: t('common.cancelOperation'), callback_data: 'cancel_update_dns' }
           ]
         ]
       }
@@ -121,13 +117,13 @@ async function handleSearchKeywordInput(ctx, session) {
 
   // 限制搜索关键字长度
   if (searchKeyword.length > 50) {
-    await createGetDnsReply(ctx)('搜索关键字过长，请输入不超过50个字符的关键字。');
+    await createGetDnsReply(ctx)(t('getdns.keywordTooLong'));
     return;
   }
 
   // 检查是否为空
   if (searchKeyword === '') {
-    await createGetDnsReply(ctx)('搜索关键字不能为空，请重新输入。');
+    await createGetDnsReply(ctx)(t('getdns.keywordEmpty'));
     return;
   }
 
@@ -144,7 +140,7 @@ async function handleSearchKeywordInput(ctx, session) {
     commandType = 'all';
     targetState = SessionState.SELECTING_DOMAIN_FOR_ALL_DNS;
   } else {
-    await createGetDnsReply(ctx)('会话状态错误，请重新开始。');
+    await createGetDnsReply(ctx)(t('getdns.invalidSessionState'));
     userSessions.delete(ctx.chat.id);
     return;
   }
@@ -156,7 +152,7 @@ async function handleSearchKeywordInput(ctx, session) {
     const domains = await getConfiguredDomains();
     await displayDomainsPage(ctx, domains, 0, commandType, searchKeyword);
   } catch (error) {
-    await createGetDnsReply(ctx)(`搜索域名失败: ${error.message}`);
+    await createGetDnsReply(ctx)(t('getdns.searchFailed', { message: error.message }));
   }
 }
 

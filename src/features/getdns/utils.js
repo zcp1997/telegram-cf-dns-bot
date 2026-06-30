@@ -2,15 +2,16 @@ const { userSessions, SessionState } = require('../core/session');
 const { trackContextMessage, createTrackedReply, deleteProcessMessages } = require('../../utils/messageManager');
 const { DNS_RECORDS_PAGE_SIZE, DOMAINS_PAGE_SIZE } = require('../../config');
 const { getDnsRecord } = require('../../services/cloudflare');
+const { t } = require('../../i18n');
 
 const command = {
   command: 'getdns',
-  description: '查询特定域名的DNS记录 (A/AAAA/CNAME/TXT)'
+  description: t('getdns.command.description')
 };
 
 const commandAll = {
   command: 'getdnsall',
-  description: '查询域名下所有DNS记录 (A/AAAA/CNAME/TXT)'
+  description: t('getdns.commandAll.description')
 };
 
 const commands = [command, commandAll];
@@ -89,7 +90,7 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
 
   // 上一页按钮
   if (session.currentPage > 0) {
-    navigationButtons.push({ text: '⬅️ 上一页', callback_data: 'dns_prev_page' });
+    navigationButtons.push({ text: t('common.previousPage'), callback_data: 'dns_prev_page' });
   }
 
   // 页码信息
@@ -100,20 +101,25 @@ async function displayDnsRecordsPage(ctx, session, domainName) {
 
   // 下一页按钮
   if (session.currentPage < session.totalPages - 1) {
-    navigationButtons.push({ text: '下一页 ➡️', callback_data: 'dns_next_page' });
+    navigationButtons.push({ text: t('common.nextPage'), callback_data: 'dns_next_page' });
   }
 
   // 完成按钮
-  const actionButtons = [{ text: '完成查询', callback_data: 'dns_done' }];
+  const actionButtons = [{ text: t('getdns.done'), callback_data: 'dns_done' }];
 
   // 合并所有按钮
   const inlineKeyboard = [...recordButtons, navigationButtons, actionButtons];
 
   const messageText =
-    `${session.domain} 的DNS记录 (第${startIdx + 1}条-第${endIdx}条/共${session.dnsRecords.length}条记录):\n\n` +
-    `点击记录可以更新或删除。\n\n` +
-    `记录类型: 4️⃣IPv4 6️⃣IPv6 🔗CNAME 📄TXT\n` +
-    `代理状态: 🟢已代理 🔴未代理 ⚪不支持`;
+    `${t('getdns.recordsTitle', {
+      domain: session.domain,
+      start: startIdx + 1,
+      end: endIdx,
+      total: session.dnsRecords.length
+    })}\n\n` +
+    `${t('getdns.recordsClickHint')}\n\n` +
+    `${t('getdns.recordsTypeLegend')}\n` +
+    t('getdns.recordsProxyLegend');
 
   await createGetDnsReply(ctx)(
     messageText,
@@ -154,24 +160,22 @@ async function queryDomainRecords(ctx, domainName) {
         session.state = SessionState.WAITING_SUBDOMAIN_INPUT;
 
         await createGetDnsReply(ctx)(
-          `未找到 ${domainName} 的DNS记录\n\n` +
-          `请重新输入要查询的域名，或直接发送 "." 查询根域名。\n\n` +
-          `支持的记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT\n\n` +
-          `示例：\n` +
-          `• 输入 "api" → 查询 api.${session.rootDomain}\n` +
-          `• 输入 "." → 查询 ${session.rootDomain}`,
+          t('getdns.noRecordsRetry', {
+            domain: domainName,
+            rootDomain: session.rootDomain
+          }),
           {
             reply_markup: {
               inline_keyboard: [[
-                { text: '查询根域名', callback_data: 'query_root_domain' },
-                { text: '取消操作', callback_data: 'cancel_getdns' }
+                { text: t('getdns.queryRootDomain'), callback_data: 'query_root_domain' },
+                { text: t('common.cancelOperation'), callback_data: 'cancel_getdns' }
               ]]
             }
           }
         );
       } else {
         // 如果没有根域名信息，则结束会话
-        await createGetDnsReply(ctx)(`未找到 ${domainName} 的DNS记录`);
+        await createGetDnsReply(ctx)(t('getdns.noRecords', { domain: domainName }));
         userSessions.delete(ctx.chat.id);
       }
     }
@@ -185,24 +189,22 @@ async function queryDomainRecords(ctx, domainName) {
       session.state = SessionState.WAITING_SUBDOMAIN_INPUT;
 
       await createGetDnsReply(ctx)(
-        `查询过程中发生错误: ${error.message}\n\n` +
-        `请重新输入要查询的域名，或直接发送 "." 查询根域名。\n\n` +
-        `支持的记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT\n\n` +
-        `示例：\n` +
-        `• 输入 "blog" → 查询 blog.${session.rootDomain}\n` +
-        `• 输入 "." → 查询 ${session.rootDomain}`,
+        t('getdns.queryErrorRetry', {
+          message: error.message,
+          rootDomain: session.rootDomain
+        }),
         {
           reply_markup: {
             inline_keyboard: [[
-              { text: '查询根域名', callback_data: 'query_root_domain' },
-              { text: '取消操作', callback_data: 'cancel_getdns' }
+              { text: t('getdns.queryRootDomain'), callback_data: 'query_root_domain' },
+              { text: t('common.cancelOperation'), callback_data: 'cancel_getdns' }
             ]]
           }
         }
       );
     } else {
       // 如果没有根域名信息，则结束会话
-      await createGetDnsReply(ctx)(`查询过程中发生错误: ${error.message}`);
+      await createGetDnsReply(ctx)(t('getdns.queryError', { message: error.message }));
       userSessions.delete(ctx.chat.id);
     }
   }
@@ -229,13 +231,13 @@ async function displayDomainsPage(ctx, domains, currentPage, commandType, search
   
   if (filteredDomains.length === 0) {
     const message = searchKeyword ? 
-      `没有找到包含关键字 "${searchKeyword}" 的域名。` : 
-      '未找到可管理的域名，请检查API Token权限或EXCLUDE_DOMAINS配置。';
+      t('getdns.noSearchResults', { keyword: searchKeyword }) :
+      t('getdns.noDomains');
     
     await createGetDnsReply(ctx)(message, {
       reply_markup: {
         inline_keyboard: [
-          [{ text: '取消操作', callback_data: 'cancel_getdns' }]
+          [{ text: t('common.cancelOperation'), callback_data: 'cancel_getdns' }]
         ]
       }
     });
@@ -260,7 +262,7 @@ async function displayDomainsPage(ctx, domains, currentPage, commandType, search
   // 上一页按钮
   if (currentPage > 0) {
     navigationButtons.push({ 
-      text: '⬅️ 上一页', 
+      text: t('common.previousPage'),
       callback_data: `domains_prev_page_${commandType}` 
     });
   }
@@ -274,7 +276,7 @@ async function displayDomainsPage(ctx, domains, currentPage, commandType, search
   // 下一页按钮
   if (currentPage < totalPages - 1) {
     navigationButtons.push({ 
-      text: '下一页 ➡️', 
+      text: t('common.nextPage'),
       callback_data: `domains_next_page_${commandType}` 
     });
   }
@@ -284,19 +286,19 @@ async function displayDomainsPage(ctx, domains, currentPage, commandType, search
   
   // 搜索按钮
   actionButtons.push({ 
-    text: '🔍 搜索域名', 
+    text: t('getdns.searchDomain'),
     callback_data: `search_domains_${commandType}` 
   });
   
   if (searchKeyword) {
     actionButtons.push({ 
-      text: '🔄 显示全部', 
+      text: t('getdns.showAllDomains'),
       callback_data: `show_all_domains_${commandType}` 
     });
   }
   
   // 取消按钮
-  actionButtons.push({ text: '取消操作', callback_data: 'cancel_getdns' });
+  actionButtons.push({ text: t('common.cancelOperation'), callback_data: 'cancel_getdns' });
   
   // 合并所有按钮
   const inlineKeyboard = [...domainButtons];
@@ -307,19 +309,23 @@ async function displayDomainsPage(ctx, domains, currentPage, commandType, search
   
   // 构建消息文本
   let message = searchKeyword ? 
-    `🔍 搜索结果 (关键字: "${searchKeyword}"):\n` :
-    '📋 请选择要查询DNS记录的域名：\n';
+    `${t('getdns.searchResultsTitle', { keyword: searchKeyword })}\n` :
+    `${t('getdns.selectDomainTitle')}\n`;
   
-  message += `\n🌐 第${startIdx + 1}-${endIdx}条，共${filteredDomains.length}个域名`;
+  message += `\n${t('getdns.domainRange', {
+    start: startIdx + 1,
+    end: endIdx,
+    total: filteredDomains.length,
+  })}`;
   
   if (totalPages > 1) {
-    message += ` (第${currentPage + 1}页/共${totalPages}页)`;
+    message += t('getdns.pageInfo', { page: currentPage + 1, totalPages });
   }
   
-  message += `\n\n支持记录类型: 4️⃣A 6️⃣AAAA 🔗CNAME 📄TXT`;
+  message += `\n\n${t('getdns.supportedRecordTypes')}`;
   
   if (!searchKeyword) {
-    message += `\n💡 点击 🔍搜索域名 可快速查找特定域名`;
+    message += `\n${t('getdns.searchTip')}`;
   }
   
   await createGetDnsReply(ctx)(message, {

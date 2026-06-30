@@ -1,6 +1,32 @@
 const { SessionState } = require('../core/session');
 const { validateDnsRecordContent } = require('../../services/validation');
 const { trackSetDnsMessage, createSetDnsReply } = require('./utils');
+const { getConfiguredDomains } = require('../../utils/domain');
+const { t } = require('../../i18n');
+
+function getRecordTypeKeyboard() {
+  return [
+    [
+      { text: t('setdns.recordType.a'), callback_data: 'select_record_type_A' },
+      { text: t('setdns.recordType.aaaa'), callback_data: 'select_record_type_AAAA' }
+    ],
+    [
+      { text: t('setdns.recordType.cname'), callback_data: 'select_record_type_CNAME' },
+      { text: t('setdns.recordType.txt'), callback_data: 'select_record_type_TXT' }
+    ],
+    [
+      { text: t('common.cancelOperation'), callback_data: 'cancel_setdns' }
+    ]
+  ];
+}
+
+function getRecordTypeLabel(recordType, compact = false) {
+  if (recordType === 'A') return compact ? '4️⃣ IPv4' : '4️⃣ IPv4';
+  if (recordType === 'AAAA') return compact ? '6️⃣ IPv6' : '6️⃣ IPv6';
+  if (recordType === 'CNAME') return '🔗 CNAME';
+  if (recordType === 'TXT') return '📄 TXT';
+  return recordType;
+}
 
 // 处理记录内容输入
 async function handleRecordContentInput(ctx, session) {
@@ -33,24 +59,25 @@ async function handleRecordContentInput(ctx, session) {
   session.state = SessionState.WAITING_PROXY;
 
   let typeLabel = recordType;
-  if (recordType === 'A') typeLabel = '4️⃣ IPv4地址';
-  else if (recordType === 'AAAA') typeLabel = '6️⃣ IPv6地址';
-  else if (recordType === 'CNAME') typeLabel = '🔗 域名别名';
+  if (recordType === 'A') typeLabel = '4️⃣ IPv4';
+  else if (recordType === 'AAAA') typeLabel = '6️⃣ IPv6';
+  else if (recordType === 'CNAME') typeLabel = '🔗 CNAME';
 
   await createSetDnsReply(ctx)(
-    `✅ ${typeLabel}已设置为: ${inputContent}\n\n` +
-    `是否为 ${session.domain} 启用 Cloudflare 代理？\n\n` +
-    `🔒 代理功能可以隐藏真实IP并提供DDoS防护\n` +
-    `⚠️ 某些服务（如SSH、FTP等）需要关闭代理才能正常使用`,
+    t('setdns.proxyPrompt', {
+      typeLabel,
+      content: inputContent,
+      domain: session.domain
+    }),
     {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '❌ 不启用代理', callback_data: 'proxy_no' },
-            { text: '✅ 启用代理', callback_data: 'proxy_yes' }
+            { text: t('setdns.proxyNo'), callback_data: 'proxy_no' },
+            { text: t('setdns.proxyYes'), callback_data: 'proxy_yes' }
           ],
           [
-            { text: '取消操作', callback_data: 'cancel_setdns' }
+            { text: t('common.cancelOperation'), callback_data: 'cancel_setdns' }
           ]
         ]
       }
@@ -63,18 +90,16 @@ async function executeSetDns(ctx, session) {
   const { createOrUpdateDns } = require('../../services/cloudflare');
   const { deleteSetDnsProcessMessages } = require('./utils');
   
-  let typeLabel = session.recordType;
-  if (session.recordType === 'A') typeLabel = '4️⃣ IPv4';
-  else if (session.recordType === 'AAAA') typeLabel = '6️⃣ IPv6';
-  else if (session.recordType === 'CNAME') typeLabel = '🔗 CNAME';
-  else if (session.recordType === 'TXT') typeLabel = '📄 TXT';
+  const typeLabel = getRecordTypeLabel(session.recordType, true);
+  const proxyStatus = session.proxied ? t('setdns.proxyEnabled') : t('setdns.proxyDisabled');
 
   await createSetDnsReply(ctx)(
-    `⏳ 正在设置DNS记录...\n\n` +
-    `📍 域名: ${session.domain}\n` +
-    `📋 类型: ${typeLabel}\n` +
-    `📝 内容: ${session.recordContent}\n` +
-    `🔒 代理: ${session.proxied ? '已启用' : '未启用'}`
+    t('setdns.setting', {
+      domain: session.domain,
+      typeLabel,
+      content: session.recordContent,
+      proxyStatus
+    })
   );
 
   try {
@@ -86,22 +111,23 @@ async function executeSetDns(ctx, session) {
     );
     
     await ctx.reply(
-      `🎉 DNS记录设置成功！\n\n` +
-      `📍 域名: ${session.domain}\n` +
-      `📋 类型: ${typeLabel}\n` +
-      `📝 内容: ${session.recordContent}\n` +
-      `🔒 代理: ${session.proxied ? '已启用' : '未启用'}\n\n` +
-      `${result.message || '记录已添加到Cloudflare'}`
+      t('setdns.success', {
+        domain: session.domain,
+        typeLabel,
+        content: session.recordContent,
+        proxyStatus,
+        message: result.message || t('setdns.defaultSuccessMessage')
+      })
     );
     
     await deleteSetDnsProcessMessages(ctx);
   } catch (error) {
-    let errorMessage = `❌ 设置DNS记录失败: ${error.message}`;
+    let errorMessage = t('setdns.failed', { message: error.message });
     if (error.response) {
-      errorMessage += ` (状态码: ${error.response.status})`;
+      errorMessage += t('setdns.statusCode', { status: error.response.status });
     }
     await ctx.reply(errorMessage);
-    console.error('设置DNS记录时出错:', error);
+    console.error('Failed to set DNS record:', error);
   }
 
   const { userSessions } = require('../core/session');
@@ -119,26 +145,10 @@ async function handleSubdomainForSet(ctx, session) {
   session.state = SessionState.SELECTING_RECORD_TYPE_FOR_SET;
 
   await createSetDnsReply(ctx)(
-    `📋 请选择要为 ${fullDomain} 设置的DNS记录类型：\n\n` +
-    `4️⃣ A记录 - IPv4地址（如：192.168.1.1）\n` +
-    `6️⃣ AAAA记录 - IPv6地址（如：2001:db8::1）\n` +
-    `🔗 CNAME记录 - 域名别名（如：example.com）\n` +
-    `📄 TXT记录 - 文本记录（如：验证码、SPF等）`,
+    t('setdns.selectRecordType', { domain: fullDomain }),
     {
       reply_markup: {
-        inline_keyboard: [
-          [
-            { text: '4️⃣ A记录 (IPv4)', callback_data: 'select_record_type_A' },
-            { text: '6️⃣ AAAA记录 (IPv6)', callback_data: 'select_record_type_AAAA' }
-          ],
-          [
-            { text: '🔗 CNAME记录', callback_data: 'select_record_type_CNAME' },
-            { text: '📄 TXT记录', callback_data: 'select_record_type_TXT' }
-          ],
-          [
-            { text: '取消操作', callback_data: 'cancel_setdns' }
-          ]
-        ]
+        inline_keyboard: getRecordTypeKeyboard()
       }
     }
   );
@@ -152,13 +162,13 @@ async function handleSearchKeywordInputForSet(ctx, session) {
 
   // 限制搜索关键字长度
   if (searchKeyword.length > 50) {
-    await createSetDnsReply(ctx)('搜索关键字过长，请输入不超过50个字符的关键字。');
+    await createSetDnsReply(ctx)(t('setdns.keywordTooLong'));
     return;
   }
 
   // 检查是否为空
   if (searchKeyword === '') {
-    await createSetDnsReply(ctx)('搜索关键字不能为空，请重新输入。');
+    await createSetDnsReply(ctx)(t('setdns.keywordEmpty'));
     return;
   }
 
@@ -173,7 +183,7 @@ async function handleSearchKeywordInputForSet(ctx, session) {
     const domains = await getConfiguredDomains();
     await displayDomainsPage(ctx, domains, 0, searchKeyword);
   } catch (error) {
-    await createSetDnsReply(ctx)(`搜索域名失败: ${error.message}`);
+    await createSetDnsReply(ctx)(t('setdns.searchFailed', { message: error.message }));
   }
 }
 
