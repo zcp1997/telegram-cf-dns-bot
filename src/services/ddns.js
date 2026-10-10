@@ -3,6 +3,7 @@ const { getCurrentIPv4, getCurrentIPv6 } = require('../utils/ip');
 const { ddnsSessions } = require('../features/core/session');
 const { saveDDNSConfig } = require('./ddns-persistence');
 const { ENABLE_IPV6_DDNS } = require('../config');
+const { t, formatDateTime } = require('../i18n');
 
 // 启动DDNS服务
 function startDDNS(chatId, domain, interval = 60, telegram) {
@@ -104,14 +105,20 @@ async function updateDDNS(session) {
             try {
               session.telegram.sendMessage(
                 session.chatId,
-                `✅ DDNS更新成功: ${session.domain}\n` +
-                `IPv4: ${currentIPv4}\n` +
-                `时间: ${now.toLocaleString()}`
+                t('ddns.notify.updated', {
+                  domain: session.domain,
+                  ipLabel: 'IPv4',
+                  ip: currentIPv4,
+                  time: formatDateTime(now)
+                })
               );
             } catch (notifyError) {
               console.error('发送通知失败:', notifyError);
             }
           }
+        } else {
+          // createOrUpdateDns 失败时返回 success: false，交给 catch 统一计数和通知
+          throw new Error(result.message);
         }
       } catch (error) {
         session.errorCount++;
@@ -122,9 +129,11 @@ async function updateDDNS(session) {
           try {
             session.telegram.sendMessage(
               session.chatId,
-              `❌ DDNS更新失败: ${session.domain}\n` +
-              `错误: ${error.message}\n` +
-              `时间: ${now.toLocaleString()}`
+              t('ddns.notify.failed', {
+                domain: session.domain,
+                message: error.message,
+                time: formatDateTime(now)
+              })
             );
           } catch (notifyError) {
             console.error('发送通知失败:', notifyError);
@@ -147,14 +156,20 @@ async function updateDDNS(session) {
             try {
               session.telegram.sendMessage(
                 session.chatId,
-                `✅ DDNS更新成功: ${session.domain}\n` +
-                `IPv6: ${currentIPv6}\n` +
-                `时间: ${now.toLocaleString()}`
+                t('ddns.notify.updated', {
+                  domain: session.domain,
+                  ipLabel: 'IPv6',
+                  ip: currentIPv6,
+                  time: formatDateTime(now)
+                })
               );
             } catch (notifyError) {
               console.error('发送通知失败:', notifyError);
             }
           }
+        } else {
+          // createOrUpdateDns 失败时返回 success: false，交给 catch 统一计数和通知
+          throw new Error(result.message);
         }
       } catch (error) {
         session.errorCount++;
@@ -178,9 +193,11 @@ async function updateDDNS(session) {
       try {
         session.telegram.sendMessage(
           session.chatId,
-          `❌ DDNS更新失败: ${session.domain}\n` +
-          `错误: ${error.message}\n` +
-          `时间: ${new Date().toLocaleString()}`
+          t('ddns.notify.failed', {
+            domain: session.domain,
+            message: error.message,
+            time: formatDateTime(new Date())
+          })
         );
       } catch (notifyError) {
         console.error('发送通知失败:', notifyError);

@@ -3,7 +3,7 @@ const { getConfiguredDomains } = require('../../utils/domain');
 const { getAllDDNSTasks } = require('../../services/ddns');
 const { commands, createDDNSTrackedReply } = require('./utils');
 const { setupCallbacks } = require('./callbacks');
-const { t } = require('../../i18n');
+const { t, formatDateTime } = require('../../i18n');
 
 function setup(bot) {
 
@@ -53,7 +53,7 @@ function setup(bot) {
 
     const tasksInfo = tasks.map(task => {
       const lastUpdateStr = task.lastUpdate
-        ? task.lastUpdate.toLocaleString()
+        ? formatDateTime(task.lastUpdate)
         : t('ddns.neverUpdated');
 
       // 根据IPv6启用状态显示不同信息

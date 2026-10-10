@@ -1,12 +1,12 @@
 const { t } = require('../../i18n');
 
 const commands = [
-  { command: 'start', description: t('admin.command.start.description') },
-  { command: 'help', description: t('admin.command.help.description') },
-  { command: 'domains', description: t('admin.command.domains.description') },
-  { command: 'language', description: t('admin.command.language.description') },
-  { command: 'listusers', description: t('admin.command.listusers.description') },
-  { command: 'zonemap', description: t('admin.command.zonemap.description') }
+  { command: 'start', get description() { return t('admin.command.start.description'); } },
+  { command: 'help', get description() { return t('admin.command.help.description'); } },
+  { command: 'domains', get description() { return t('admin.command.domains.description'); } },
+  { command: 'language', get description() { return t('admin.command.language.description'); } },
+  { command: 'listusers', get description() { return t('admin.command.listusers.description'); } },
+  { command: 'zonemap', get description() { return t('admin.command.zonemap.description'); } }
 ];
 
 // 为数组添加命令引用

@@ -2,12 +2,13 @@ const axios = require('axios');
 const { CF_API_TOKEN, CF_API_BASE } = require('../config');
 const { getZoneIdForDomain } = require('../utils/domain');
 const { logDnsOperation } = require('../utils/dnsLogger');
+const { t } = require('../i18n');
 
 // Cloudflare API 函数
 async function getDnsRecord(domainName, getAllRecords = false) {
   const zoneId = await getZoneIdForDomain(domainName);
   if (!zoneId) {
-    throw new Error(`找不到域名 ${domainName} 对应的Zone ID，请检查配置`);
+    throw new Error(t('cloudflare.zoneNotFound', { domain: domainName }));
   }
 
   try {
@@ -58,7 +59,7 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
     if (!zoneId) {
       return {
         success: false,
-        message: `无法找到域名 ${domainName} 对应的Zone ID`
+        message: t('cloudflare.zoneNotFound', { domain: domainName })
       };
     }
 
@@ -75,7 +76,7 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
     };
 
     let response;
-    let action;
+    let isUpdate = false;
 
     if (existingRecord) {
       // 更新现有记录
@@ -87,7 +88,7 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
           'Content-Type': 'application/json'
         }
       });
-      action = '更新';
+      isUpdate = true;
 
       // 记录DNS更新操作
       logDnsOperation('update', {
@@ -108,7 +109,6 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
           'Content-Type': 'application/json'
         }
       });
-      action = '创建';
 
       // 记录DNS创建操作
       logDnsOperation('create', {
@@ -124,14 +124,19 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
       if (response.data.success) {
         return {
           success: true,
-          message: `成功${action}DNS记录 ${domainName} -> ${ipAddress}`
+          message: t(isUpdate ? 'cloudflare.recordUpdated' : 'cloudflare.recordCreated', {
+            domain: domainName,
+            content: ipAddress
+          })
         };
       }
     }
 
     return {
       success: false,
-      message: `无法${action}DNS记录，API响应: ${JSON.stringify(response.data)}`
+      message: t(isUpdate ? 'cloudflare.updateFailed' : 'cloudflare.createFailed', {
+        response: JSON.stringify(response.data)
+      })
     };
   } catch (error) {
     console.error('操作DNS记录失败:', error.message);
@@ -140,7 +145,7 @@ async function createOrUpdateDns(domainName, ipAddress, recordType = 'A', proxie
     }
     return {
       success: false,
-      message: `操作失败: ${error.message}`
+      message: t('cloudflare.operationFailed', { message: error.message })
     };
   }
 }
@@ -154,7 +159,7 @@ async function deleteDnsRecord(domainName) {
     if (!records || records.length === 0) {
       return {
         success: false,
-        message: `未找到域名 ${domainName} 的DNS记录`
+        message: t('cloudflare.noRecords', { domain: domainName })
       };
     }
 
@@ -204,22 +209,26 @@ async function deleteDnsRecord(domainName) {
     if (failCount === 0) {
       return {
         success: true,
-        message: `成功删除 ${successCount} 条DNS记录: ${domainName}`
+        message: t('cloudflare.deleteSuccess', { count: successCount, domain: domainName })
       };
     } else {
       const failedRecords = deleteResults
         .filter(r => !r.success)
-        .map(r => `${r.type}记录(${r.content})`);
+        .map(r => t('cloudflare.failedRecordItem', { type: r.type, content: r.content }));
       return {
         success: false,
-        message: `部分记录删除失败。成功: ${successCount}, 失败: ${failCount}\n失败记录: ${failedRecords.join(', ')}`
+        message: t('cloudflare.partialDeleteFailed', {
+          successCount,
+          failCount,
+          records: failedRecords.join(', ')
+        })
       };
     }
   } catch (error) {
     console.error('删除DNS记录失败:', error.message);
     return {
       success: false,
-      message: `删除失败: ${error.message}`
+      message: t('cloudflare.deleteFailed', { message: error.message })
     };
   }
 }
@@ -249,10 +258,10 @@ async function deleteSingleDnsRecord(zoneId, recordId, recordInfo) {
 
       return {
         success: true,
-        message: 'DNS记录已成功删除'
+        message: t('cloudflare.recordDeleted')
       };
     } else {
-      throw new Error(response.data.errors[0].message || '删除DNS记录失败');
+      throw new Error(response.data.errors[0].message || t('cloudflare.recordDeleteFailed'));
     }
   } catch (error) {
     console.error('删除DNS记录失败:', error.message);
@@ -267,7 +276,7 @@ async function updateDnsRecord(zoneId, recordId, name, content, type, proxied, o
 
     // 确保 zoneId 和 recordId 都存在
     if (!zoneId || !recordId) {
-      throw new Error('缺少 Zone ID 或记录 ID');
+      throw new Error(t('cloudflare.missingRecordIds'));
     }
 
     const url = `${CF_API_BASE}/${zoneId}/dns_records/${recordId}`;
@@ -301,11 +310,11 @@ async function updateDnsRecord(zoneId, recordId, name, content, type, proxied, o
 
       return {
         success: true,
-        message: 'DNS记录已成功更新',
+        message: t('cloudflare.recordUpdatedSimple'),
         record: response.data.result
       };
     } else {
-      throw new Error(response.data.errors[0].message || '更新DNS记录失败');
+      throw new Error(response.data.errors[0].message || t('cloudflare.recordUpdateFailed'));
     }
   } catch (error) {
     console.error('更新DNS记录失败:', error.response ? error.response.status : error.message);

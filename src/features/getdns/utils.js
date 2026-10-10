@@ -6,12 +6,12 @@ const { t } = require('../../i18n');
 
 const command = {
   command: 'getdns',
-  description: t('getdns.command.description')
+  get description() { return t('getdns.command.description'); }
 };
 
 const commandAll = {
   command: 'getdnsall',
-  description: t('getdns.commandAll.description')
+  get description() { return t('getdns.commandAll.description'); }
 };
 
 const commands = [command, commandAll];

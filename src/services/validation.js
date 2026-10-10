@@ -2,6 +2,7 @@ const axios = require('axios');
 const net = require('net');
 const { CF_API_TOKEN, CF_API_BASE } = require('../config');
 const { getAvailableDomains } = require('../utils/domain');
+const { t } = require('../i18n');
 
 /**
  * 验证 Cloudflare 配置
@@ -11,7 +12,7 @@ async function validateCloudflareConfig() {
   try {
     // 检查必要的环境变量
     if (!CF_API_TOKEN) {
-      throw new Error('未配置 CF_API_TOKEN');
+      throw new Error(t('validation.cfTokenMissing'));
     }
 
     // 验证API Token是否有效
@@ -23,25 +24,25 @@ async function validateCloudflareConfig() {
     });
 
     if (!response.data.success) {
-      throw new Error('API Token 无效或无权限访问 Cloudflare API');
+      throw new Error(t('validation.cfTokenInvalid'));
     }
 
     // 检查是否有可用的域名
     const availableDomains = await getAvailableDomains();
     if (availableDomains.length === 0) {
-      throw new Error('API Token 没有任何可管理的域名，请检查权限或EXCLUDE_DOMAINS配置');
+      throw new Error(t('validation.cfNoDomains'));
     }
 
     console.log(`Cloudflare 配置验证成功，可管理 ${availableDomains.length} 个域名`);
     return {
       success: true,
-      message: `Cloudflare 配置验证成功，可管理 ${availableDomains.length} 个域名`
+      message: t('validation.cfConfigValid', { count: availableDomains.length })
     };
   } catch (error) {
     console.error('Cloudflare 配置验证失败:', error);
     return {
       success: false,
-      message: `Cloudflare 配置验证失败: ${error.message}`
+      message: t('validation.cfConfigInvalid', { message: error.message })
     };
   }
 }
@@ -58,19 +59,19 @@ async function validateDomainConfig(domain) {
     if (!zoneId) {
       return {
         success: false,
-        message: `域名 ${domain} 不在任何可管理的 Zone 中`
+        message: t('validation.domainNotInZone', { domain })
       };
     }
 
     return {
       success: true,
-      message: `域名 ${domain} 配置有效`,
+      message: t('validation.domainConfigValid', { domain }),
       zoneId
     };
   } catch (error) {
     return {
       success: false,
-      message: `验证域名配置时发生错误: ${error.message}`
+      message: t('validation.domainConfigError', { message: error.message })
     };
   }
 }
@@ -82,7 +83,7 @@ function validateIpAddress(ip) {
   if (!ip) {
     return {
       success: false,
-      message: 'IP地址不能为空'
+      message: t('validation.ipEmpty')
     };
   }
 
@@ -102,7 +103,7 @@ function validateIpAddress(ip) {
   // 如果既不是有效的IPv4也不是有效的IPv6
   return {
     success: false,
-    message: '请输入有效的IP地址（IPv4或IPv6）'
+    message: t('validation.ipInvalid')
   };
 }
 
@@ -114,7 +115,7 @@ function validateDomainName(domain) {
   if (!domain) {
     return {
       success: false,
-      message: '域名不能为空'
+      message: t('validation.domainEmpty')
     };
   }
 
@@ -125,14 +126,14 @@ function validateDomainName(domain) {
   if (cleanDomain.length === 0) {
     return {
       success: false,
-      message: '域名不能为空'
+      message: t('validation.domainEmpty')
     };
   }
 
   if (cleanDomain.length > 253) {
     return {
       success: false,
-      message: '域名长度不能超过253个字符'
+      message: t('validation.domainTooLong')
     };
   }
 
@@ -140,7 +141,7 @@ function validateDomainName(domain) {
   if (cleanDomain.includes('..') || cleanDomain.startsWith('.') || cleanDomain.endsWith('.')) {
     return {
       success: false,
-      message: '域名格式无效：不能包含连续的点号，不能以点号开头或结尾'
+      message: t('validation.domainDots')
     };
   }
 
@@ -153,13 +154,13 @@ function validateDomainName(domain) {
     if (testUrl.hostname !== cleanDomain) {
       return {
         success: false,
-        message: '域名格式无效：包含非法字符'
+        message: t('validation.domainIllegalChars')
       };
     }
   } catch (error) {
     return {
       success: false,
-      message: '请输入有效的域名格式（如：example.com、subdomain.example.org）'
+      message: t('validation.domainInvalidFormat')
     };
   }
 
@@ -170,7 +171,7 @@ function validateDomainName(domain) {
   if (parts.length < 2) {
     return {
       success: false,
-      message: '域名必须包含至少一个点号（如：example.com）'
+      message: t('validation.domainNeedsDot')
     };
   }
 
@@ -182,7 +183,7 @@ function validateDomainName(domain) {
     if (part.length === 0) {
       return {
         success: false,
-        message: '域名的各个部分不能为空'
+        message: t('validation.domainEmptyLabel')
       };
     }
     
@@ -190,7 +191,7 @@ function validateDomainName(domain) {
     if (part.length > 63) {
       return {
         success: false,
-        message: `域名的每个部分不能超过63个字符，"${part}"过长`
+        message: t('validation.domainLabelTooLong', { part })
       };
     }
     
@@ -198,7 +199,7 @@ function validateDomainName(domain) {
     if (part.startsWith('-') || part.endsWith('-')) {
       return {
         success: false,
-        message: `域名的每个部分不能以连字符开头或结尾："${part}"`
+        message: t('validation.domainLabelHyphen', { part })
       };
     }
     
@@ -206,7 +207,7 @@ function validateDomainName(domain) {
     if (!/^[a-z0-9-]+$/.test(part)) {
       return {
         success: false,
-        message: `域名只能包含字母、数字和连字符："${part}"包含无效字符`
+        message: t('validation.domainLabelChars', { part })
       };
     }
   }
@@ -216,14 +217,14 @@ function validateDomainName(domain) {
   if (!/^[a-z]+$/.test(tld)) {
     return {
       success: false,
-      message: `顶级域名只能包含字母："${tld}"`
+      message: t('validation.tldLettersOnly', { tld })
     };
   }
 
   if (tld.length < 2) {
     return {
       success: false,
-      message: `顶级域名至少需要2个字符："${tld}"`
+      message: t('validation.tldTooShort', { tld })
     };
   }
 
@@ -241,7 +242,7 @@ function validateTxtRecord(content) {
   if (!content) {
     return {
       success: false,
-      message: 'TXT记录内容不能为空'
+      message: t('validation.txtEmpty')
     };
   }
 
@@ -249,7 +250,7 @@ function validateTxtRecord(content) {
   if (content.length > 65535) {
     return {
       success: false,
-      message: 'TXT记录内容长度不能超过65535个字符'
+      message: t('validation.txtTooLong')
     };
   }
 
@@ -268,7 +269,7 @@ function validateDnsRecordContent(content, recordType) {
   if (!content) {
     return {
       success: false,
-      message: '记录内容不能为空'
+      message: t('validation.contentEmpty')
     };
   }
 
@@ -286,7 +287,7 @@ function validateDnsRecordContent(content, recordType) {
     default:
       return {
         success: false,
-        message: `不支持的记录类型: ${recordType}`
+        message: t('validation.unsupportedRecordType', { type: recordType })
       };
   }
 }

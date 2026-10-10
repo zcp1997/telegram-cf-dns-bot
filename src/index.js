@@ -1,8 +1,17 @@
 const { Telegraf } = require('telegraf');
 const { TELEGRAM_TOKEN, ALLOWED_CHAT_IDS, DDNS_SAVE_INTERVAL_SECONDS } = require('./config');
-const { setupCommandsAndCallbacks, setupTextHandlers, commands } = require('./features/core');
+const { setupCommandsAndCallbacks, setupTextHandlers, getMenuCommands } = require('./features/core');
 const { checkAccessWithCache } = require('./middleware/auth');
 const { restoreDDNSTasks, setupAutoSave } = require('./services/ddns-persistence');
+const { loadSavedLanguage, saveLanguage } = require('./services/language-persistence');
+const { setLanguage, getLanguage, onLanguageChange } = require('./i18n');
+
+// 恢复通过 /language 保存的语言（优先于 BOT_LANGUAGE 环境变量）
+const savedLanguage = loadSavedLanguage();
+if (savedLanguage) {
+  setLanguage(savedLanguage);
+}
+console.log('当前语言:', getLanguage());
 
 const bot = new Telegraf(TELEGRAM_TOKEN);
 
@@ -12,6 +21,14 @@ bot.use(checkAccessWithCache);
 // 设置处理器
 setupCommandsAndCallbacks(bot);
 setupTextHandlers(bot);
+
+// 切换语言时持久化，并同步刷新命令菜单
+onLanguageChange((language) => {
+  saveLanguage(language);
+  bot.telegram.setMyCommands(getMenuCommands())
+    .then(() => console.log(`已按 ${language} 刷新命令菜单`))
+    .catch(error => console.error('刷新命令菜单失败:', error.message));
+});
 
 // 启动 Bot
 async function startBot() {
@@ -50,7 +67,7 @@ async function startBot() {
     console.log('5. 已清除现有命令');
 
     // 设置普通用户命令菜单
-    await bot.telegram.setMyCommands(commands);
+    await bot.telegram.setMyCommands(getMenuCommands());
     console.log('6. 已设置用户命令菜单');
 
     // 恢复DDNS任务

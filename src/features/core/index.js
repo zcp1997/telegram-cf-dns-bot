@@ -17,9 +17,15 @@ const commands = [
   ...ddns.commands,
   dnschangelogs.command,
   admin.commands.domains_command,
+  admin.commands.language_command,
   admin.commands.listusers_command,
   admin.commands.zonemap_command,
 ];
+
+// 生成当前语言的命令菜单（description 为 getter，需在调用时取值）
+function getMenuCommands() {
+  return commands.map(({ command, description }) => ({ command, description }));
+}
 
 // 设置所有命令和回调函数
 function setupCommandsAndCallbacks(bot) {
@@ -39,5 +45,6 @@ function setupTextHandlers(bot) {
 module.exports = {
   setupCommandsAndCallbacks,
   setupTextHandlers,
-  commands
+  commands,
+  getMenuCommands
 };

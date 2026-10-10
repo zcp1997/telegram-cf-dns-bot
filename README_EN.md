@@ -121,7 +121,7 @@ docker compose up -d
 
 - `/start` - Start the bot and display welcome message with function menu
 - `/help` - View detailed help information and usage guide
-- `/language` - Switch bot prompt language (Simplified Chinese/English)
+- `/language` - Switch bot prompt language (Simplified Chinese/English, kept across restarts; the command menu switches too)
 - `/domains` - List all manageable domains
 
 ### DNS Record Management
@@ -188,7 +188,7 @@ When creating an API Token, include these permissions:
 | EXCLUDE_DOMAINS  | Excluded domains (comma-separated) | No       | `example.com,example.org`                      |
 | IN_CHINA         | Whether deployed in mainland China | No       | `true` or `false` (default: `false`)           |
 | ENABLE_IPV6_DDNS | enable IPv6 DDNS update | No | `true` or `false` (default: `false`) |
-| BOT_LANGUAGE     | Bot prompt language                | No       | `zh-CN` or `en-US` (auto-detected by default, fallback: `zh-CN`) |
+| BOT_LANGUAGE     | Bot prompt language                | No       | `zh-CN` or `en-US` (auto-detected by default, fallback: `zh-CN`); a choice made with `/language` is saved to `config/settings.json` and takes precedence |
 | DEBUG_DDNS       | Print DDNS debug logs              | No       | `true` or `false` (default: `false`)           |
 
 ## Troubleshooting

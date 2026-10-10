@@ -109,7 +109,12 @@ async function executeSetDns(ctx, session) {
       session.recordType,
       session.proxied
     );
-    
+
+    // createOrUpdateDns 失败时返回 success: false 而不是抛异常，交给下面统一的失败处理
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
     await ctx.reply(
       t('setdns.success', {
         domain: session.domain,

@@ -15,7 +15,7 @@ const modulesToReset = [
   './src/i18n',
 ];
 
-function loadSetDnsFlow() {
+function loadSetDnsFlow({ dnsResult = { success: true, message: 'Record added to Cloudflare' } } = {}) {
   clearModules(modulesToReset);
 
   mockModule('./src/utils/domain', {
@@ -23,7 +23,7 @@ function loadSetDnsFlow() {
   });
 
   mockModule('./src/services/cloudflare', {
-    createOrUpdateDns: async () => ({ success: true, message: 'Record added to Cloudflare' }),
+    createOrUpdateDns: async () => dnsResult,
   });
 
   mockModule('./src/services/validation', {
@@ -125,4 +125,25 @@ test('/setdns record type and content prompts follow runtime language', async ()
   assert.match(proxyPrompt, /Enable Cloudflare proxy for example\.com/);
   assert.match(proxyPrompt, /Proxy hides the origin IP/);
   assert.equal(ctx.calls.reply.at(-1).extra.reply_markup.inline_keyboard[0][0].text, '❌ Disable proxy');
+});
+
+test('/setdns reports failure when Cloudflare returns success: false', async () => {
+  const { setdns, setupSetDnsTextHandler } = loadSetDnsFlow({
+    dnsResult: { success: false, message: 'Operation failed: Request failed with status code 400' },
+  });
+  const bot = new FakeBot();
+  setdns.setup(bot);
+  setupSetDnsTextHandler(bot);
+
+  const ctx = createCtx({ text: '/setdns' });
+  await bot.runCommand('setdns', ctx);
+  await bot.runAction('select_domain_set_example.com', ctx);
+  await bot.runAction('set_root_domain', ctx);
+  await bot.runAction('select_record_type_A', ctx);
+  await bot.runText('192.0.2.1', ctx);
+  await bot.runAction('proxy_no', ctx);
+
+  const result = ctx.calls.reply.at(-1).text;
+  assert.match(result, /^❌ Failed to set DNS record: Operation failed: Request failed with status code 400/);
+  assert.doesNotMatch(result, /successfully/);
 });

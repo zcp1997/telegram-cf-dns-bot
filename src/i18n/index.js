@@ -25,6 +25,7 @@ const defaultLanguage = normalizeLanguage(
   process.env.LANG
 );
 let currentLanguage = defaultLanguage;
+const languageChangeListeners = [];
 
 function interpolate(template, params = {}) {
   return template.replace(/\{(\w+)\}/g, (match, key) => (
@@ -37,8 +38,28 @@ function getLanguage() {
 }
 
 function setLanguage(language) {
+  const previousLanguage = currentLanguage;
   currentLanguage = normalizeLanguage(language);
+
+  if (currentLanguage !== previousLanguage) {
+    for (const listener of languageChangeListeners) {
+      try {
+        listener(currentLanguage, previousLanguage);
+      } catch (error) {
+        console.error('Language change listener failed:', error);
+      }
+    }
+  }
+
   return currentLanguage;
+}
+
+function onLanguageChange(listener) {
+  languageChangeListeners.push(listener);
+}
+
+function formatDateTime(date, language = currentLanguage) {
+  return new Date(date).toLocaleString(normalizeLanguage(language), { hour12: false });
 }
 
 function t(key, params = {}, language = currentLanguage) {
@@ -54,4 +75,6 @@ module.exports = {
   defaultLanguage,
   getLanguage,
   setLanguage,
+  onLanguageChange,
+  formatDateTime,
 };

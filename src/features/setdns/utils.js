@@ -4,7 +4,7 @@ const { t } = require('../../i18n');
 
 const command = {
   command: 'setdns',
-  description: t('setdns.command.description')
+  get description() { return t('setdns.command.description'); }
 };
 
 // 创建命令特定的跟踪函数

@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { IN_CHINA, DEBUG_DDNS } = require('../config');
+const { t } = require('../i18n');
 
 function debugDDNS(...args) {
   if (DEBUG_DDNS) {
@@ -72,7 +73,7 @@ async function getCurrentIPv4() {
   // 所有服务都失败时
   const errorMessage = `无法获取当前IPv4地址，所有服务均失败:\n${errors.join('\n')}`;
   console.error(errorMessage);
-  throw new Error('无法获取当前IPv4地址，所有服务均失败');
+  throw new Error(t('ddns.ipv4FetchFailed'));
 }
 
 /**

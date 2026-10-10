@@ -5,9 +5,9 @@ const { startDDNS } = require('../../services/ddns');
 const { t } = require('../../i18n');
 
 const commands = [
-  { command: 'ddns', description: t('ddns.command.setup.description') },
-  { command: 'ddnsstatus', description: t('ddns.command.status.description') },
-  { command: 'stopddns', description: t('ddns.command.stop.description') },
+  { command: 'ddns', get description() { return t('ddns.command.setup.description'); } },
+  { command: 'ddnsstatus', get description() { return t('ddns.command.status.description'); } },
+  { command: 'stopddns', get description() { return t('ddns.command.stop.description'); } },
 ];
 
 // 为数组添加命令引用

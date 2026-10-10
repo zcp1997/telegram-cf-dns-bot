@@ -123,7 +123,7 @@ docker compose up -d
 
 - `/start` - 启动机器人，显示欢迎信息和功能菜单
 - `/help` - 查看详细的帮助信息和使用指南
-- `/language` - 切换Bot提示语言（支持简体中文/English）
+- `/language` - 切换Bot提示语言（支持简体中文/English，重启后保留，命令菜单同步切换）
 - `/domains` - 列出所有可管理的域名列表
 
 ### DNS 记录管理
@@ -190,7 +190,7 @@ docker compose up -d
 | EXCLUDE_DOMAINS | 排除的域名列表（逗号分隔） | 可选 | `example.com,example.org` |
 | IN_CHINA | 是否部署在中国大陆服务器 | 可选 | `true` 或 `false`（默认为`false`） |
 | ENABLE_IPV6_DDNS | 是否启用IPv6 DDNS更新 | 可选 | `true` 或 `false`（默认为`false`） |
-| BOT_LANGUAGE | Bot提示语言 | 可选 | `zh-CN` 或 `en-US`（默认自动推断，回退为`zh-CN`） |
+| BOT_LANGUAGE | Bot提示语言 | 可选 | `zh-CN` 或 `en-US`（默认自动推断，回退为`zh-CN`）；通过 `/language` 切换后会保存到 `config/settings.json`，并优先于此变量 |
 | DEBUG_DDNS | 是否打印DDNS调试日志 | 可选 | `true` 或 `false`（默认为`false`） |
 
 ## 故障排除
