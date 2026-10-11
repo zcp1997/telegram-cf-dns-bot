@@ -1,6 +1,5 @@
-const { CF_API_TOKEN, EXCLUDE_DOMAINS, CACHE_TTL } = require('../config');
-const axios = require('axios');
-const { CF_API_BASE } = require('../config');
+const { EXCLUDE_DOMAINS, CACHE_TTL, CF_API_BASE } = require('../config');
+const { fetchAllPages } = require('./cfPagination');
 
 // 缓存域名到zoneId的映射
 let domainZoneCache = null;
@@ -9,25 +8,18 @@ let lastCacheTime = 0;
 // 获取所有可用区域及其ID的映射
 async function fetchZonesMapping() {
   try {
-    const response = await axios.get(`${CF_API_BASE}`, {
-      headers: {
-        'Authorization': `Bearer ${CF_API_TOKEN}`,
-        'Content-Type': 'application/json'
+    // zones 接口 per_page 最大为 50
+    const zones = await fetchAllPages(CF_API_BASE, { perPage: 50 });
+
+    // 创建域名到zoneId的映射
+    const mapping = {};
+    zones.forEach(zone => {
+      // 排除不需要管理的域名
+      if (!EXCLUDE_DOMAINS.includes(zone.name)) {
+        mapping[zone.name] = zone.id;
       }
     });
-
-    if (response.data.success && response.data.result.length > 0) {
-      // 创建域名到zoneId的映射
-      const mapping = {};
-      response.data.result.forEach(zone => {
-        // 排除不需要管理的域名
-        if (!EXCLUDE_DOMAINS.includes(zone.name)) {
-          mapping[zone.name] = zone.id;
-        }
-      });
-      return mapping;
-    }
-    return {};
+    return mapping;
   } catch (error) {
     console.error('获取域名区域映射失败:', error.message);
     return {};

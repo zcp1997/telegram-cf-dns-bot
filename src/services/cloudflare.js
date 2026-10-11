@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { CF_API_TOKEN, CF_API_BASE } = require('../config');
 const { getZoneIdForDomain } = require('../utils/domain');
+const { fetchAllPages } = require('../utils/cfPagination');
 const { logDnsOperation } = require('../utils/dnsLogger');
 const { t } = require('../i18n');
 
@@ -19,31 +20,22 @@ async function getDnsRecord(domainName, getAllRecords = false) {
       params.name = domainName;
     }
 
-    const response = await axios.get(`${CF_API_BASE}/${zoneId}/dns_records`, {
-      headers: {
-        'Authorization': `Bearer ${CF_API_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      params: params
+    const result = await fetchAllPages(`${CF_API_BASE}/${zoneId}/dns_records`, {
+      params,
+      perPage: 100
     });
 
-    if (response.data.success && response.data.result.length > 0) {
-      // 确保每条记录都包含 zone_id 字段，支持 A、AAAA、CNAME、TXT 记录
-      const supportedTypes = ['A', 'AAAA', 'CNAME', 'TXT'];
-      const records = response.data.result
-        .filter(record => supportedTypes.includes(record.type))
-        .map(record => ({
-          ...record,
-          zone_id: zoneId
-        }));
+    // 确保每条记录都包含 zone_id 字段，支持 A、AAAA、CNAME、TXT 记录
+    const supportedTypes = ['A', 'AAAA', 'CNAME', 'TXT'];
+    const records = result
+      .filter(record => supportedTypes.includes(record.type))
+      .map(record => ({
+        ...record,
+        zone_id: zoneId
+      }));
 
-      return {
-        records: records,
-        zoneId: zoneId
-      };
-    }
     return {
-      records: [],
+      records: records,
       zoneId: zoneId
     };
   } catch (error) {

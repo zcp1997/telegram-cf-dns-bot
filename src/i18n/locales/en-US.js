@@ -308,6 +308,7 @@ module.exports = {
   'deldns.pageInfoFallback': 'Page info',
 
   'cloudflare.zoneNotFound': 'No Zone ID found for domain {domain}. Check your configuration.',
+  'cloudflare.listFailed': 'Cloudflare API request failed',
   'cloudflare.recordCreated': 'Created DNS record {domain} -> {content}',
   'cloudflare.recordUpdated': 'Updated DNS record {domain} -> {content}',
   'cloudflare.createFailed': 'Failed to create DNS record. API response: {response}',

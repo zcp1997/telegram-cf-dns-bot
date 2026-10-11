@@ -308,6 +308,7 @@ module.exports = {
   'deldns.pageInfoFallback': '页码信息',
 
   'cloudflare.zoneNotFound': '找不到域名 {domain} 对应的Zone ID，请检查配置',
+  'cloudflare.listFailed': 'Cloudflare API 请求失败',
   'cloudflare.recordCreated': '成功创建DNS记录 {domain} -> {content}',
   'cloudflare.recordUpdated': '成功更新DNS记录 {domain} -> {content}',
   'cloudflare.createFailed': '无法创建DNS记录，API响应: {response}',
